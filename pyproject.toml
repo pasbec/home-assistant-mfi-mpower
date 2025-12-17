@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "home-assistant-mfi-mpower"
-version = "1.2.0"
+version = "1.2.1"
 description = "mFi mPower for Home Assistant"
 readme = "README.md"
 authors = [{ name = "pasbec", email = "p.b-dev+mfi-mpower@mailbox.org" }]
@@ -17,7 +17,7 @@ requires-python = ">=3.9"
 dev = ["bumpver", "black", "pylint", "isort", "pip-tools", "pytest"]
 
 [tool.bumpver]
-current_version = "1.2.0"
+current_version = "1.2.1"
 version_pattern = "MAJOR.MINOR.PATCH"
 commit_message  = "Bump version {old_version} -> {new_version}"
 commit          = true
