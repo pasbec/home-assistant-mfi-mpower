@@ -103,7 +103,10 @@ class MPowerCoordinatorEntity(CoordinatorEntity):
                 # Adjust entity id
                 assert self.domain is not None
                 entity_registry = er.async_get(self.hass)
-                new_object_id = slugify(f"{self.device_name} {self.name}")
+                if self.name is None:
+                    new_object_id = slugify(f"{self.device_name}")
+                else:
+                    new_object_id = slugify(f"{self.device_name} {self.name}")
                 try:
                     new_entity_id = f"{self.domain}.{new_object_id}"
                     entity_registry.async_update_entity(
