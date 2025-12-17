@@ -43,14 +43,4 @@ def async_check_significant_change(
     if threshold is None:
         return None
 
-    # _LOGGER.debug(
-    #     "Device class: %s, Old: %s, New: %s, Threshold: %s",
-    #     device_class,
-    #     old_value,
-    #     new_value,
-    #     threshold,
-    # )
-
-    # return abs(new_value - old_value) >= threshold
-
-    return None
+    return abs(new_value - old_value) >= threshold
