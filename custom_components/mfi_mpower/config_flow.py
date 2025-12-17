@@ -75,17 +75,20 @@ async def validate_data(hass: HomeAssistant, data: dict[str, Any]) -> str | None
 
     try:
         api_device = await api.create_device(hass, data)
-    except Exception:  # pylint: disable=broad-except
+    except Exception as exc:  # pylint: disable=broad-except
+        _LOGGER.debug("Device creation failed: %s", exc)
         return "input_error"
 
     try:
         await api_device.login()
-    except api.MPowerAPIConnError:
+    except api.MPowerAPIConnError as exc:
+        _LOGGER.debug("Connection failed: %s", exc)
         return "cannot_connect"
-    except api.MPowerAPIAuthError:
+    except api.MPowerAPIAuthError as exc:
+        _LOGGER.debug("Authentication failed: %s", exc)
         return "invalid_auth"
-    except Exception:  # pylint: disable=broad-except
-        _LOGGER.exception("Unexpected exception during input validation")
+    except Exception as exc:  # pylint: disable=broad-except
+        _LOGGER.exception("Unhandled exception occurred: %s", exc)
         return "unknown"
 
     return None
