@@ -13,5 +13,5 @@
   "codeowners": ["@pasbec"],
   "iot_class": "local_polling",
   "loggers": ["asyncssh", "mfi_mpower"],
-  "version": "1.1.0"
+  "version": "1.2.0"
 }
