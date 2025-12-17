@@ -1,25 +1,44 @@
 {
-    "config": {
-        "abort": {
-            "already_configured": "Device is already configured"
-        },
-        "error": {
-            "input_error": "Input error",
-            "cannot_connect": "Failed to connect",
-            "invalid_auth": "Invalid authentication",
-            "unknown": "Unexpected error"
-        },
-        "step": {
-            "user": {
-                "data": {
-                    "host": "Host",
-                    "password": "Password",
-                    "scan_interval": "Scan Interval (seconds)",
-                    "ssl": "Uses an SSL certificate",
-                    "username": "Username",
-                    "verify_ssl": "Verify SSL certificate"
-                }
-            }
+  "config": {
+    "abort": {
+      "already_configured": "Device is already configured"
+    },
+    "error": {
+      "input_error": "Input error",
+      "cannot_connect": "Failed to connect",
+      "invalid_auth": "Invalid authentication",
+      "unknown": "Unknown error"
+    },
+    "step": {
+      "user": {
+        "data": {
+          "host": "Host",
+          "password": "Password",
+          "scan_interval": "Scan Interval (seconds)",
+          "ssl": "Enable SSL",
+          "username": "Username",
+          "verify_ssl": "Verify SSL certificate"
         }
+      }
     }
+  },
+  "entity": {
+    "sensor": {
+      "power": {
+        "name": "Power"
+      },
+      "current": {
+        "name": "Current"
+      },
+      "voltage": {
+        "name": "Voltage"
+      },
+      "powerfactor": {
+        "name": "Power Factor"
+      },
+      "energy": {
+        "name": "Energy"
+      }
+    }
+  }
 }

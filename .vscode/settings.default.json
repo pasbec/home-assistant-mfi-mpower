@@ -6,5 +6,30 @@
   "editor.formatOnSave": true,
   "python.formatting.provider": "black",
   "python.linting.pylintEnabled": true,
-  "python.linting.enabled": true
+  "python.linting.enabled": true,
+  "cSpell.ignoreWords": [
+    "asyncssh",
+    "bumpver",
+    "clientsession",
+    "codeowners",
+    "fwversion",
+    "hass",
+    "homeassistant",
+    "homekit",
+    "hwaddr",
+    "isort",
+    "joinpath",
+    "mpower",
+    "pasbec",
+    "pathlib",
+    "powerfactor",
+    "pylint",
+    "pyproject",
+    "pytest",
+    "setuptools",
+    "ssdp",
+    "ubnt",
+    "zeroconf"
+  ],
+  "cSpell.words": ["Ubiquiti"]
 }

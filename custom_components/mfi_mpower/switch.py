@@ -1,4 +1,5 @@
 """Support for Ubiquiti mFi mPower switches."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -68,7 +69,7 @@ class MPowerSwitchEntity(MPowerCoordinatorEntity, SwitchEntity):
     domain: str = switch.DOMAIN
 
     _attr_device_class = SwitchDeviceClass.OUTLET
-    _attr_name = "Output"
+    _attr_name = None
 
     @property
     def available(self) -> bool:

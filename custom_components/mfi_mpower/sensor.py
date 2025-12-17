@@ -1,14 +1,20 @@
 """Support for Ubiquiti mFi mPower sensors."""
+
 from __future__ import annotations
 
 from homeassistant.components import sensor
-from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
+from homeassistant.components.sensor import (
+    SensorStateClass,
+    SensorDeviceClass,
+    SensorEntity,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     PERCENTAGE,
     UnitOfElectricCurrent,
     UnitOfElectricPotential,
     UnitOfPower,
+    UnitOfEnergy,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import PlatformNotReady
@@ -62,6 +68,7 @@ async def async_create_entities(
         *[MPowerCurrentSensorEntity(e, coordinator) for e in api_entities],
         *[MPowerVoltageSensorEntity(e, coordinator) for e in api_entities],
         *[MPowerPowerFactorSensorEntity(e, coordinator) for e in api_entities],
+        *[MPowerEnergySensorEntity(e, coordinator) for e in api_entities],
     ]
 
     return entities
@@ -79,7 +86,10 @@ class MPowerPowerSensorEntity(MPowerSensorEntity):
     api_entity: api.MPowerSensor
 
     _attr_device_class = SensorDeviceClass.POWER
-    _attr_name = "Power"
+    _attr_native_unit_of_measurement = UnitOfPower.WATT
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 0
+    _attr_translation_key = "power"
 
     @property
     def unique_id(self) -> str:
@@ -89,12 +99,7 @@ class MPowerPowerSensorEntity(MPowerSensorEntity):
     @property
     def native_value(self) -> float:
         """Return the native value of the sensor."""
-        return round(self.api_entity.power, 2)
-
-    @property
-    def native_unit_of_measurement(self) -> str:
-        """Return the native unit of measurement of the sensor."""
-        return UnitOfPower.WATT
+        return self.api_entity.power
 
 
 class MPowerCurrentSensorEntity(MPowerSensorEntity):
@@ -103,7 +108,10 @@ class MPowerCurrentSensorEntity(MPowerSensorEntity):
     api_entity: api.MPowerSensor
 
     _attr_device_class = SensorDeviceClass.CURRENT
-    _attr_name = "Current"
+    _attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 2
+    _attr_translation_key = "current"
 
     @property
     def unique_id(self) -> str:
@@ -113,12 +121,7 @@ class MPowerCurrentSensorEntity(MPowerSensorEntity):
     @property
     def native_value(self) -> float:
         """Return the native value of the sensor."""
-        return round(self.api_entity.current, 3)
-
-    @property
-    def native_unit_of_measurement(self) -> str:
-        """Return the native unit of measurement of the sensor."""
-        return UnitOfElectricCurrent.AMPERE
+        return self.api_entity.current
 
 
 class MPowerVoltageSensorEntity(MPowerSensorEntity):
@@ -127,7 +130,10 @@ class MPowerVoltageSensorEntity(MPowerSensorEntity):
     api_entity: api.MPowerSensor
 
     _attr_device_class = SensorDeviceClass.VOLTAGE
-    _attr_name = "Voltage"
+    _attr_native_unit_of_measurement = UnitOfElectricPotential.VOLT
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 0
+    _attr_translation_key = "voltage"
 
     @property
     def unique_id(self) -> str:
@@ -137,21 +143,19 @@ class MPowerVoltageSensorEntity(MPowerSensorEntity):
     @property
     def native_value(self) -> float:
         """Return the native value of the sensor."""
-        return round(self.api_entity.voltage, 2)
-
-    @property
-    def native_unit_of_measurement(self) -> str:
-        """Return the native unit of measurement of the sensor."""
-        return UnitOfElectricPotential.VOLT
+        return self.api_entity.voltage
 
 
 class MPowerPowerFactorSensorEntity(MPowerSensorEntity):
-    """Coordinated factor sensor entity for Ubiquiti mFi mPower power sensors."""
+    """Coordinated sensor entity for Ubiquiti mFi mPower power factor sensors."""
 
     api_entity: api.MPowerSensor
 
     _attr_device_class = SensorDeviceClass.POWER_FACTOR
-    _attr_name = "Power factor"
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 0
+    _attr_translation_key = "powerfactor"
 
     @property
     def unique_id(self) -> str:
@@ -161,9 +165,26 @@ class MPowerPowerFactorSensorEntity(MPowerSensorEntity):
     @property
     def native_value(self) -> float:
         """Return the native value of the sensor."""
-        return round(self.api_entity.powerfactor, 3)
+        return self.api_entity.powerfactor
+
+
+class MPowerEnergySensorEntity(MPowerSensorEntity):
+    """Coordinated sensor entity for Ubiquiti mFi mPower energy sensors."""
+
+    api_entity: api.MPowerSensor
+
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+    _attr_device_class = SensorDeviceClass.ENERGY
+    _attr_suggested_display_precision = 2
+    _attr_translation_key = "energy"
 
     @property
-    def native_unit_of_measurement(self) -> str:
-        """Return the native unit of measurement of the sensor."""
-        return PERCENTAGE
+    def unique_id(self) -> str:
+        """Return the unique id of the sensor."""
+        return f"{self.api_entity.unique_id}-energy"
+
+    @property
+    def native_value(self) -> float:
+        """Return the native value of the sensor."""
+        return self.api_entity.energy

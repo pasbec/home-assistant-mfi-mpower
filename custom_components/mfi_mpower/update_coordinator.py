@@ -1,4 +1,5 @@
 """Update coordinator helpers for the Ubiquiti mFi mPower integration."""
+
 from __future__ import annotations
 
 import asyncio

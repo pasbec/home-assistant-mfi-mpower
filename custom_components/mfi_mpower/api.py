@@ -1,4 +1,5 @@
 """Namespace wrapper for the API (mfi_mpower) of the Ubiquiti mFi mPower integration."""
+
 from __future__ import annotations
 
 import asyncio

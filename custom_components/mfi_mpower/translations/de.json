@@ -1,0 +1,44 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Gerät ist bereits konfiguriert"
+    },
+    "error": {
+      "input_error": "Eingabefehler",
+      "cannot_connect": "Verbindung ist fehlgeschlagen",
+      "invalid_auth": "Ungültige Authentifizierung",
+      "unknown": "Unbekannter Fehler"
+    },
+    "step": {
+      "user": {
+        "data": {
+          "host": "Host",
+          "password": "Passwort",
+          "scan_interval": "Abtastintervall (Sekunden)",
+          "ssl": "Verwende SSL",
+          "username": "Benutzername",
+          "verify_ssl": "SSL-Zertifikat überprüfen"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "power": {
+        "name": "Leistung"
+      },
+      "current": {
+        "name": "Stromstärke"
+      },
+      "voltage": {
+        "name": "Spannung"
+      },
+      "powerfactor": {
+        "name": "Leistungsfaktor"
+      },
+      "energy": {
+        "name": "Energie"
+      }
+    }
+  }
+}

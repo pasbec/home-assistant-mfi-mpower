@@ -1,4 +1,5 @@
 """Helper to test significant Ubiquiti mFi mPower state changes."""
+
 from __future__ import annotations
 
 import logging
@@ -8,6 +9,14 @@ from homeassistant.const import ATTR_DEVICE_CLASS
 from homeassistant.core import HomeAssistant, callback
 
 _LOGGER = logging.getLogger(__name__)
+
+SIGNIFICANT_CHANGE_THRESHOLDS = {
+    "power": 1.0,  # Watt
+    "current": 0.01,  # Ampere
+    "voltage": 1.0,  # Volt
+    "power_factor": 0.01,  # %
+    "energy": 0.001,  # kWh
+}
 
 
 @callback
@@ -21,10 +30,27 @@ def async_check_significant_change(
 ) -> bool | None:
     """Test if state significantly changed."""
     device_class = new_attrs.get(ATTR_DEVICE_CLASS)
-
-    _LOGGER.debug(device_class)
-
     if device_class is None:
         return None
+
+    try:
+        old_value = float(old_state)
+        new_value = float(new_state)
+    except (TypeError, ValueError):
+        return None
+
+    threshold = SIGNIFICANT_CHANGE_THRESHOLDS.get(device_class)
+    if threshold is None:
+        return None
+
+    # _LOGGER.debug(
+    #     "Device class: %s, Old: %s, New: %s, Threshold: %s",
+    #     device_class,
+    #     old_value,
+    #     new_value,
+    #     threshold,
+    # )
+
+    # return abs(new_value - old_value) >= threshold
 
     return None
