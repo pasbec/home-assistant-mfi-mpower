@@ -4,7 +4,7 @@
   "integration_type": "hub",
   "config_flow": true,
   "documentation": "https://github.com/pasbec/home-assistant-mfi-mpower",
-  "requirements": ["mfi-mpower==1.3.0"],
+  "requirements": ["mfi-mpower==1.3.5"],
   "significant_change": "custom_components.mfi_mpower.significant_change.async_check_significant_change",
   "ssdp": [],
   "zeroconf": [],
@@ -12,6 +12,6 @@
   "dependencies": [],
   "codeowners": ["@pasbec"],
   "iot_class": "local_polling",
-  "loggers": ["asyncssh", "mfi_mpower"],
+  "loggers": ["asyncssh", "custom_components.mfi_mpower"],
   "version": "1.2.2"
 }
