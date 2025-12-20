@@ -74,7 +74,7 @@ class MPowerSwitchEntity(MPowerCoordinatorEntity, SwitchEntity):
     @property
     def available(self) -> bool:
         """Return the availability of the switch."""
-        if self.api_entity.lock:
+        if self.api_entity.locked:
             return False
         return super().available
 

@@ -49,12 +49,12 @@ class MPowerDataUpdateCoordinator(DataUpdateCoordinator):
                 await api.update_device(self.api_device)
         except asyncio.TimeoutError as exc:
             raise asyncio.TimeoutError(exc) from exc
-        except api.MPowerAPIAuthError as exc:
+        except api.MPowerAuthenticationError as exc:
             raise ConfigEntryAuthFailed(exc) from exc
         except Exception as exc:
             raise UpdateFailed(exc) from exc
 
-        return self.api_device.port_data
+        return self.api_device.data.get("ports", [])
 
     @property
     def api_device(self) -> api.MPowerDevice:
@@ -89,7 +89,7 @@ class MPowerCoordinatorEntity(CoordinatorEntity):
         data = self.coordinator.data
 
         if data is not None:
-            self.api_entity.data = data[self.api_entity.port - 1]
+            self.api_entity._data = data[self.api_entity.port - 1]
 
             # Check if api entity label has changed
             if self.api_entity.label != self.api_label:

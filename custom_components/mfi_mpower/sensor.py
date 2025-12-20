@@ -165,7 +165,7 @@ class MPowerPowerFactorSensorEntity(MPowerSensorEntity):
     @property
     def native_value(self) -> float | None:
         """Return the native value of the sensor."""
-        return self.api_entity.powerfactor
+        return 100 * self.api_entity.powerfactor
 
 
 class MPowerEnergySensorEntity(MPowerSensorEntity):
@@ -187,4 +187,4 @@ class MPowerEnergySensorEntity(MPowerSensorEntity):
     @property
     def native_value(self) -> float | None:
         """Return the native value of the sensor."""
-        return self.api_entity.energy
+        return self.api_entity.energy / 1000

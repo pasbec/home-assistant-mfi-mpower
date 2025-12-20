@@ -11,24 +11,20 @@ import asyncssh
 # pylint: disable=unused-import
 from mfi_mpower.device import MPowerDevice
 from mfi_mpower.entities import MPowerEntity, MPowerSensor, MPowerSwitch
-from mfi_mpower.exceptions import (
-    MPowerAPIAuthError,
-    MPowerAPIConnError,
-    MPowerAPIDataError,
-    MPowerAPIReadError,
-    MPowerSSHConnError,
+from mfi_mpower.exceptions import MPowerDataError
+from mfi_mpower.session import (
+    MPowerAuthenticationError,
+    MPowerCommandError,
+    MPowerConnectionError,
 )
 
 from homeassistant.const import (
     CONF_HOST,
     CONF_PASSWORD,
     CONF_SCAN_INTERVAL,
-    CONF_SSL,
     CONF_USERNAME,
-    CONF_VERIFY_SSL,
 )
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
 from .const import DEFAULTS
 from .update_coordinator import MPowerDataUpdateCoordinator
@@ -54,23 +50,17 @@ def create_data(
             MPowerEntity,
             MPowerSensor,
             MPowerSwitch,
-            MPowerAPIConnError,
-            MPowerAPIAuthError,
-            MPowerAPIReadError,
-            MPowerAPIDataError,
+            MPowerConnectionError,
+            MPowerAuthenticationError,
+            MPowerCommandError,
+            MPowerDataError,
         ]
     )
-    session = async_create_clientsession(hass, verify_ssl=data[CONF_VERIFY_SSL])
 
     return {
         "host": data.get(CONF_HOST, DEFAULTS[CONF_HOST]),
         "username": data.get(CONF_USERNAME, DEFAULTS[CONF_USERNAME]),
         "password": data.get(CONF_PASSWORD, DEFAULTS[CONF_PASSWORD]),
-        "use_ssl": data.get(CONF_SSL, DEFAULTS[CONF_SSL]),
-        "verify_ssl": data.get(CONF_VERIFY_SSL, DEFAULTS[CONF_VERIFY_SSL]),
-        "cache_time": 0,
-        "board_info": True,
-        "session": session,
     }
 
 
@@ -148,12 +138,12 @@ class UpdateHandler:
 
     def handle(self, exc):
         """Handle update exception."""
-        if isinstance(exc, MPowerSSHConnError):
+        if isinstance(exc, MPowerConnectionError):
             if isinstance(exc.__context__, BrokenPipeError):
                 if self._loop.get_debug():
                     _LOGGER.warning(
                         "%s %s",
-                        "MPowerSSHConnError was raised from BrokenPipeError with enabled event loop debug mode.",
+                        "MPowerConnectionError was raised from BrokenPipeError with enabled event loop debug mode.",
                         "The debug mode of the event loop will temporarily be disabled",
                     )
                     self._loop.set_debug(False)

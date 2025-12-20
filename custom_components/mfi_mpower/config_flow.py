@@ -13,9 +13,7 @@ from homeassistant.const import (
     CONF_HOST,
     CONF_PASSWORD,
     CONF_SCAN_INTERVAL,
-    CONF_SSL,
     CONF_USERNAME,
-    CONF_VERIFY_SSL,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
@@ -43,13 +41,6 @@ def create_schema(data=None, conf: tuple | list | None = None):
         vol.Required(
             CONF_PASSWORD, default=data.get(CONF_PASSWORD, DEFAULTS[CONF_PASSWORD])
         ): cv.string,
-        vol.Optional(
-            CONF_SSL, default=data.get(CONF_SSL, DEFAULTS[CONF_SSL])
-        ): cv.boolean,
-        vol.Optional(
-            CONF_VERIFY_SSL,
-            default=data.get(CONF_VERIFY_SSL, DEFAULTS[CONF_VERIFY_SSL]),
-        ): cv.boolean,
         vol.Optional(
             CONF_SCAN_INTERVAL,
             default=data.get(CONF_SCAN_INTERVAL, DEFAULTS[CONF_SCAN_INTERVAL]),
@@ -81,10 +72,10 @@ async def validate_data(hass: HomeAssistant, data: dict[str, Any]) -> str | None
 
     try:
         await api_device.login()
-    except api.MPowerAPIConnError as exc:
+    except api.MPowerConnectionError as exc:
         _LOGGER.debug("Connection failed: %s", exc)
         return "cannot_connect"
-    except api.MPowerAPIAuthError as exc:
+    except api.MPowerAuthenticationError as exc:
         _LOGGER.debug("Authentication failed: %s", exc)
         return "invalid_auth"
     except Exception as exc:  # pylint: disable=broad-except

@@ -26,7 +26,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     device_registry = dr.async_get(hass)
     device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
-        configuration_url=str(api_device.url),
+        configuration_url=f"http://{api_device.host}",
         connections={(dr.CONNECTION_NETWORK_MAC, api_device.hwaddr)},
         identifiers={(DOMAIN, api_device.unique_id)},
         manufacturer=api_device.manufacturer,
