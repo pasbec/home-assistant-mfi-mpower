@@ -11,7 +11,8 @@ from homeassistant.const import (
 
 DOMAIN = "mfi_mpower"
 
-NAME = "Ubiquiti mFi mPower"
+MANUFACTURER = "Ubiquiti"
+NAME = "mFi mPower"
 
 DEFAULT_TIMEOUT = 10
 

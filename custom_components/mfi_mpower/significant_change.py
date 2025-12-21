@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 from homeassistant.const import ATTR_DEVICE_CLASS
 from homeassistant.core import HomeAssistant, callback
-
-_LOGGER = logging.getLogger(__name__)
 
 SIGNIFICANT_CHANGE_THRESHOLDS = {
     "power": 1.0,  # Watt

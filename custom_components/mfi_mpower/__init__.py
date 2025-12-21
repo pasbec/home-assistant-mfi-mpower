@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
@@ -9,41 +11,68 @@ from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.device_registry import DeviceEntry
 
 from . import api
-from .const import DOMAIN
+from .const import CONF_HOST, DOMAIN
 
-PLATFORMS: list[Platform] = [Platform.SWITCH, Platform.SENSOR]
+PLATFORMS: list[Platform] = [Platform.SWITCH, Platform.SENSOR, Platform.SELECT]
+
+_LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Set up integration from a config entry."""
+    title = api.create_title(config_entry.data[CONF_HOST])
+    if config_entry.title != title:
+        hass.config_entries.async_update_entry(config_entry, title=title)
     hass.data.setdefault(DOMAIN, {})
 
-    coordinator = await api.create_coordinator(hass, dict(entry.data))
+    data = {**config_entry.data, **config_entry.options}
+
+    coordinator = await api.create_coordinator(
+        hass=hass, data=data, config_entry=config_entry
+    )
     api_device = coordinator.api_device
 
-    hass.data[DOMAIN][entry.entry_id] = coordinator
+    hass.data[DOMAIN][config_entry.entry_id] = coordinator
+
+    config_entry.async_on_unload(
+        config_entry.add_update_listener(async_update_listener)
+    )
 
     device_registry = dr.async_get(hass)
     device_registry.async_get_or_create(
-        config_entry_id=entry.entry_id,
+        config_entry_id=config_entry.entry_id,
         configuration_url=f"http://{api_device.host}",
         connections={(dr.CONNECTION_NETWORK_MAC, api_device.hwaddr)},
+        hw_version=api_device.hw_version,
         identifiers={(DOMAIN, api_device.unique_id)},
         manufacturer=api_device.manufacturer,
         name=api_device.name,
         model=api_device.model,
-        sw_version=api_device.fwversion,
+        model_id=api_device.model_id,
+        sw_version=api_device.sw_version,
     )
 
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
 
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_update_listener(hass: HomeAssistant, config_entry: ConfigEntry):
+    """Handle options update."""
+    coordinator = hass.data[DOMAIN].get(config_entry.entry_id)
+
+    # Reload integration to apply new options
+    if coordinator is not None:
+        _LOGGER.debug("Reload %s device %s", DOMAIN, coordinator.api_device.host)
+        await hass.config_entries.async_reload(config_entry.entry_id)
+
+
+async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        hass.data[DOMAIN].pop(entry.entry_id)
+    if unload_ok := await hass.config_entries.async_unload_platforms(
+        config_entry, PLATFORMS
+    ):
+        hass.data[DOMAIN].pop(config_entry.entry_id)
 
     return unload_ok
 

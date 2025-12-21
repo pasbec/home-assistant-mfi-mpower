@@ -12,7 +12,6 @@
     "bumpversion",
     "clientsession",
     "codeowners",
-    "fwversion",
     "hass",
     "homeassistant",
     "homekit",
@@ -31,5 +30,5 @@
     "ubnt",
     "zeroconf"
   ],
-  "cSpell.words": ["Ubiquiti"]
+  "cSpell.words": ["Steckdose", "Ubiquiti"]
 }

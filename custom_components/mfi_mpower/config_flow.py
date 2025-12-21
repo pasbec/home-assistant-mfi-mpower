@@ -6,63 +6,24 @@ from collections.abc import Mapping
 import logging
 from typing import Any
 
-import voluptuous as vol
-
-from homeassistant import config_entries
+from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlow
 from homeassistant.const import (
     CONF_HOST,
     CONF_PASSWORD,
-    CONF_SCAN_INTERVAL,
     CONF_USERNAME,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
-from homeassistant.helpers import selector
-import homeassistant.helpers.config_validation as cv
 
 from . import api
-from .const import DEFAULT_TIMEOUT, DEFAULTS, DOMAIN
+from .const import DOMAIN
+from .options_flow import create_schema, MPowerOptionsFlowHandler
 
 _LOGGER = logging.getLogger(__name__)
 
 
-def create_schema(data=None, conf: tuple | list | None = None):
-    """Construct schema from config data."""
-    if data is None:
-        data = DEFAULTS
-
-    schema = {
-        vol.Required(
-            CONF_HOST, default=data.get(CONF_HOST, DEFAULTS[CONF_HOST])
-        ): cv.string,
-        vol.Required(
-            CONF_USERNAME, default=data.get(CONF_USERNAME, DEFAULTS[CONF_USERNAME])
-        ): cv.string,
-        vol.Required(
-            CONF_PASSWORD, default=data.get(CONF_PASSWORD, DEFAULTS[CONF_PASSWORD])
-        ): cv.string,
-        vol.Optional(
-            CONF_SCAN_INTERVAL,
-            default=data.get(CONF_SCAN_INTERVAL, DEFAULTS[CONF_SCAN_INTERVAL]),
-        ): selector.NumberSelector(
-            selector.NumberSelectorConfig(
-                min=DEFAULT_TIMEOUT,
-                mode=selector.NumberSelectorMode.BOX,
-                unit_of_measurement="seconds",
-            ),
-        ),
-    }
-
-    if conf is not None:
-        for key in list(schema.keys()):
-            if key.schema not in conf:
-                schema.pop(key)
-
-    return vol.Schema(schema)
-
-
 async def validate_data(hass: HomeAssistant, data: dict[str, Any]) -> str | None:
-    """Validate the config data allows us to connect."""
+    """Validate the config data ."""
 
     try:
         api_device = await api.create_device(hass, data)
@@ -71,7 +32,7 @@ async def validate_data(hass: HomeAssistant, data: dict[str, Any]) -> str | None
         return "input_error"
 
     try:
-        await api_device.login()
+        await api_device.session.connect()
     except api.MPowerConnectionError as exc:
         _LOGGER.debug("Connection failed: %s", exc)
         return "cannot_connect"
@@ -85,17 +46,21 @@ async def validate_data(hass: HomeAssistant, data: dict[str, Any]) -> str | None
     return None
 
 
-class MPowerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class MPowerConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle config flows for Ubiquiti mFi mPower."""
 
     VERSION = 1
 
-    _reauth_entry: config_entries.ConfigEntry
+    _reauth_entry: ConfigEntry
+
+    @staticmethod
+    def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
+        return MPowerOptionsFlowHandler()
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Handle the initial step."""
+        """Handle the user step."""
         data = {}
         error = None
 
@@ -105,7 +70,10 @@ class MPowerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             # NOTE: If data is validated, a new entry is created
             if not error:
-                return self.async_create_entry(title=user_input[CONF_HOST], data=data)
+                return self.async_create_entry(
+                    title=api.create_title(user_input[CONF_HOST]),
+                    data=data,
+                )
 
         return self.async_show_form(
             step_id="user",

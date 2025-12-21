@@ -14,7 +14,7 @@
         "data": {
           "host": "Host",
           "password": "Password",
-          "scan_interval": "Scan Interval (seconds)",
+          "scan_interval": "Update Interval (seconds)",
           "ssl": "Enable SSL",
           "username": "Username",
           "verify_ssl": "Verify SSL certificate"
@@ -24,6 +24,21 @@
   },
   "entity": {
     "sensor": {
+      "host": {
+        "name": "Host"
+      },
+      "ipaddr": {
+        "name": "IP Address"
+      },
+      "iface": {
+        "name": "Interface"
+      },
+      "ports": {
+        "name": "Outlets"
+      },
+      "poll": {
+        "name": "Update Interval"
+      },
       "power": {
         "name": "Power"
       },
@@ -38,6 +53,16 @@
       },
       "energy": {
         "name": "Energy"
+      }
+    },
+    "switch": {
+      "lock": {
+        "name": "Lock"
+      }
+    },
+    "select": {
+      "led": {
+        "name": "Status LED"
       }
     }
   }

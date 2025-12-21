@@ -9,7 +9,7 @@ from typing import Any
 import asyncssh
 
 # pylint: disable=unused-import
-from mfi_mpower.device import MPowerDevice
+from mfi_mpower.device import MPowerLED, MPowerDevice
 from mfi_mpower.entities import MPowerEntity, MPowerSensor, MPowerSwitch
 from mfi_mpower.exceptions import MPowerDataError
 from mfi_mpower.session import (
@@ -18,6 +18,7 @@ from mfi_mpower.session import (
     MPowerConnectionError,
 )
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_HOST,
     CONF_PASSWORD,
@@ -26,17 +27,17 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 
-from .const import DEFAULTS
+from .const import DEFAULTS, NAME
 from .update_coordinator import MPowerDataUpdateCoordinator
 
 # pylint: enable=unused-import
 
-
 _LOGGER = logging.getLogger(__name__)
 
-# Reduce verbosity level from asyncssh
-if _LOGGER.level in (logging.NOTSET, logging.INFO):
-    asyncssh.logging.set_log_level(logging.WARNING)
+
+def create_title(host: str) -> str:
+    """Construct title from host."""
+    return f"{NAME} [{host}]"
 
 
 def create_data(
@@ -46,6 +47,7 @@ def create_data(
     """Construct API data to create MPowerDevice instances from hass and config data."""
     assert all(
         [
+            MPowerLED,
             MPowerDevice,
             MPowerEntity,
             MPowerSensor,
@@ -81,24 +83,48 @@ async def update_device(api_device: MPowerDevice) -> None:
 
 
 async def create_coordinator(
-    hass: HomeAssistant, data: dict[str, Any]
+    hass: HomeAssistant, data: dict[str, Any], config_entry: ConfigEntry | None = None
 ) -> MPowerDataUpdateCoordinator:
     """Construct coordinator instance from hass and config data."""
 
+    # Silence info messages from asyncssh logger
+    asyncssh_logger = logging.getLogger(asyncssh.__name__)
+    if _LOGGER.getEffectiveLevel() > logging.DEBUG:
+        asyncssh_logger.setLevel(logging.WARNING)
+    else:
+        asyncssh_logger.setLevel(logging.DEBUG)
+    asyncssh_logger.addFilter(SilenceAsyncSSH())
+
+    # Create and update API device
     api_device = await create_device(hass, data)
     try:
         await update_device(api_device)
     except Exception:  # pylint: disable=broad-except
         pass  # The coordinator will take over on failure...
 
+    # Create coordinator
     coordinator = MPowerDataUpdateCoordinator(
-        hass, api_device, data[CONF_SCAN_INTERVAL]
+        hass=hass,
+        device=api_device,
+        scan_interval=data[CONF_SCAN_INTERVAL],
+        config_entry=config_entry,
     )
 
+    # Let the coordinator take over if the device was not updated yet
     if not api_device.updated:
         await coordinator.async_config_entry_first_refresh()
 
     return coordinator
+
+
+class SilenceAsyncSSH(logging.Filter):
+    """Logging filter to silence info messages from asyncssh."""
+
+    def filter(self, record):
+        if record.levelno == logging.INFO:
+            record.levelno = logging.DEBUG
+            record.levelname = "DEBUG"
+        return True
 
 
 class UpdateHandler:
