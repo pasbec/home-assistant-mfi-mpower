@@ -6,9 +6,8 @@ import asyncio
 import logging
 from typing import Any
 
-import asyncssh
-
 # pylint: disable=unused-import
+import asyncssh
 from mfi_mpower.device import MPowerLED, MPowerDevice
 from mfi_mpower.entities import MPowerEntity, MPowerSensor, MPowerSwitch
 from mfi_mpower.exceptions import MPowerDataError
@@ -86,14 +85,8 @@ async def create_coordinator(
     hass: HomeAssistant, data: dict[str, Any], config_entry: ConfigEntry | None = None
 ) -> MPowerDataUpdateCoordinator:
     """Construct coordinator instance from hass and config data."""
-
-    # Silence info messages from asyncssh logger
-    asyncssh_logger = logging.getLogger(asyncssh.__name__)
-    if _LOGGER.getEffectiveLevel() > logging.DEBUG:
-        asyncssh_logger.setLevel(logging.WARNING)
-    else:
-        asyncssh_logger.setLevel(logging.DEBUG)
-    asyncssh_logger.addFilter(SilenceAsyncSSH())
+    # Setup asyncssh logger
+    setup_asyncssh_logger()
 
     # Create and update API device
     api_device = await create_device(hass, data)
@@ -106,7 +99,7 @@ async def create_coordinator(
     coordinator = MPowerDataUpdateCoordinator(
         hass=hass,
         device=api_device,
-        scan_interval=data[CONF_SCAN_INTERVAL],
+        scan_interval=data.get(CONF_SCAN_INTERVAL, DEFAULTS[CONF_SCAN_INTERVAL]),
         config_entry=config_entry,
     )
 
@@ -117,10 +110,26 @@ async def create_coordinator(
     return coordinator
 
 
-class SilenceAsyncSSH(logging.Filter):
-    """Logging filter to silence info messages from asyncssh."""
+def setup_asyncssh_logger():
+    """Setup logger for asyncssh."""
+    asyncssh_logger = logging.getLogger(asyncssh.__name__)
+    asyncssh_logger.setLevel(_LOGGER.level)
+    asyncssh_logger.filters = [
+        f for f in asyncssh_logger.filters if not isinstance(f, SilenceInfoFilter)
+    ]
+    asyncssh_logger.addFilter(SilenceInfoFilter())
+
+
+class SilenceInfoFilter(logging.Filter):
+    """Logging filter to silence info messages."""
 
     def filter(self, record):
+        logger = logging.getLogger(record.name)
+        # Suppress INFO and lower if logger is NOTSET
+        if logger.level == logging.NOTSET:
+            if record.levelno <= logging.INFO:
+                return False
+        # Downgrade INFO to DEBUG
         if record.levelno == logging.INFO:
             record.levelno = logging.DEBUG
             record.levelname = "DEBUG"

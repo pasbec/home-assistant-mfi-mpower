@@ -16,6 +16,7 @@
     "homeassistant",
     "homekit",
     "hwaddr",
+    "hwaddrs",
     "isort",
     "joinpath",
     "mpower",
