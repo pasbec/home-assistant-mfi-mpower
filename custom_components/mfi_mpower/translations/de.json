@@ -6,7 +6,7 @@
     "error": {
       "input_error": "Eingabefehler",
       "cannot_connect": "Verbindung ist fehlgeschlagen",
-      "invalid_auth": "Ungültige Authentifizierung",
+      "invalid_auth": "Ungültige Zugangsdaten",
       "unknown": "Unbekannter Fehler"
     },
     "step": {

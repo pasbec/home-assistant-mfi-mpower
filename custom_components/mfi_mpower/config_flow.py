@@ -32,7 +32,7 @@ async def validate_data(hass: HomeAssistant, data: dict[str, Any]) -> str | None
         return "input_error"
 
     try:
-        await api_device.session.connect()
+        await api_device.interface.connect()
     except api.MPowerConnectionError as exc:
         _LOGGER.debug("Connection failed: %s", exc)
         return "cannot_connect"
