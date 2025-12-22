@@ -151,10 +151,10 @@ class MPowerCoordinatorEntity(CoordinatorEntity, ABC):
         # Update data
         if self.has_api_entity:
             # Update API entity data
-            self.api_entity._data = data["ports"][self.api_entity.port - 1]
+            self.api_entity.data = data["ports"][self.api_entity.port - 1]
         else:
             # Update APIdevice data
-            self.api_device._data = data
+            self.api_device.data = data
 
         # Get old device name
         old_device_name = self.device_info.get("name")
