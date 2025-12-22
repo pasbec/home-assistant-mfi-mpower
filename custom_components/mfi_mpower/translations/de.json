@@ -15,9 +15,19 @@
           "host": "Host",
           "password": "Passwort",
           "scan_interval": "Abfrageintervall (Sekunden)",
-          "ssl": "Verwende SSL",
-          "username": "Benutzername",
-          "verify_ssl": "SSL-Zertifikat überprüfen"
+          "username": "Benutzername"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "host": "Host",
+          "password": "Passwort",
+          "scan_interval": "Abfrageintervall (Sekunden)",
+          "username": "Benutzername"
         }
       }
     }

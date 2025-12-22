@@ -6,8 +6,7 @@
           "host": "[%key:common::config_flow::data::host%]",
           "username": "[%key:common::config_flow::data::username%]",
           "password": "[%key:common::config_flow::data::password%]",
-          "ssl": "[%key:common::config_flow::data::ssl%]",
-          "verify_ssl": "[%key:common::config_flow::data::verify_ssl%]"
+          "scan_interval": "[%key:common::config_flow::data::scan_interval%]"
         }
       }
     },
@@ -18,6 +17,18 @@
     },
     "abort": {
       "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "host": "[%key:common::config_flow::data::host%]",
+          "username": "[%key:common::config_flow::data::username%]",
+          "password": "[%key:common::config_flow::data::password%]",
+          "scan_interval": "[%key:common::config_flow::data::scan_interval%]"
+        }
+      }
     }
   }
 }

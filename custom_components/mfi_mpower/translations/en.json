@@ -15,9 +15,19 @@
           "host": "Host",
           "password": "Password",
           "scan_interval": "Update Interval (seconds)",
-          "ssl": "Enable SSL",
-          "username": "Username",
-          "verify_ssl": "Verify SSL certificate"
+          "username": "Username"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "host": "Host",
+          "password": "Password",
+          "scan_interval": "Update Interval (seconds)",
+          "username": "Username"
         }
       }
     }
