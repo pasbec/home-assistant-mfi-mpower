@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "home-assistant-mfi-mpower"
-version = "2.1.0"
+version = "2.1.1"
 description = "mFi mPower for Home Assistant"
 readme = "README.md"
 authors = [{ name = "pasbec", email = "p.b-dev+mfi-mpower@mailbox.org" }]
@@ -17,7 +17,7 @@ requires-python = ">=3.9"
 dev = ["black", "bump-my-version", "isort", "pip-tools", "pylint", "pytest"]
 
 [tool.bumpversion]
-current_version = "2.1.0"
+current_version = "2.1.1"
 parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
 serialize = ["{major}.{minor}.{patch}"]
 search = "{current_version}"
