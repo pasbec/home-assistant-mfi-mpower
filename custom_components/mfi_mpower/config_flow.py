@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+import logging
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlow
@@ -18,6 +19,8 @@ from . import api
 from .const import CONF_SCAN_INTERVAL, DOMAIN
 from .schema import create_schema
 
+_LOGGER = logging.getLogger(__name__)
+
 
 # TODO: Use OptionsFlowWithReload with homeassistant>=2025.8.0
 #       and remove async_update_listener in __init__.py afterwards
@@ -26,12 +29,13 @@ class MPowerOptionsFlow(OptionsFlow):
 
     async def async_step_init(self, user_input=None) -> FlowResult:
         """Handle the initial step."""
+        config_entry = self.config_entry
+        data = {**config_entry.data, **config_entry.options}
+
         # User input is available
         if user_input is not None:
+            # Update the config entry and finish the flow
             return self.async_create_entry(data=user_input)
-
-        # Get data merged with options
-        data = {**self.config_entry.data, **self.config_entry.options}
 
         # Show the form to the user
         return self.async_show_form(
@@ -53,11 +57,6 @@ class MPowerConfigFlow(ConfigFlow, domain=DOMAIN):
         """Create the options flow."""
         return MPowerOptionsFlow()
 
-    @property
-    def config_entry(self) -> ConfigEntry | None:
-        """Return the config entry being configured."""
-        return self.hass.config_entries.async_get_entry(self.context["entry_id"])
-
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
@@ -74,22 +73,35 @@ class MPowerConfigFlow(ConfigFlow, domain=DOMAIN):
             (api_device, error) = await api.create_device_for_flow(self.hass, data=data)
 
             # Proceed only if API device is available and no error occurred
-            if api_device is not None and not error:
-                # Set unique ID for the config flow
-                # TODO: Change unique ID of the API to use only hwaddr
-                # await self.async_set_unique_id(api_device.unique_id)
-                await self.async_set_unique_id(api_device.hwaddr)
+            if not error and api_device and api_device.has_data:
+                # Debug: Log config entries
+                _LOGGER.debug(
+                    "Setting up config entry for device: %s (%s)",
+                    api_device.host,
+                    api_device.mac,
+                )
+                for entry in self.hass.config_entries.async_entries(DOMAIN):
+                    _LOGGER.debug(
+                        "Existing config entry for device: %s (%s)",
+                        entry.data.get(CONF_HOST),
+                        entry.unique_id,
+                    )
 
-                # Abort the flow if a config entry with the same unique ID exists
+                # Set unique ID for the config flow
+                await self.async_set_unique_id(api_device.mac)
+
+                # Abort the flow if a flow with the same unique ID exists
                 self._abort_if_unique_id_configured(
                     updates={CONF_HOST: api_device.host}
                 )
 
-                # Create the config entry
+                # Create the config entry and finish the flow
                 return self.async_create_entry(
                     title=api.create_title(user_input[CONF_HOST]),
                     data=data,
                 )
+            elif not error:
+                error = "unknown"
 
         # Show the form to the user
         return self.async_show_form(
@@ -102,7 +114,7 @@ class MPowerConfigFlow(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle the reconfiguration flow."""
-        config_entry = self.config_entry
+        config_entry = self._get_reconfigure_entry()
         data = config_entry.data.copy()
         error = None
 
@@ -115,28 +127,26 @@ class MPowerConfigFlow(ConfigFlow, domain=DOMAIN):
             (api_device, error) = await api.create_device_for_flow(self.hass, data=data)
 
             # Proceed only if API device is available and no error occurred
-            if api_device is not None and not error:
-                # Get the unique ID of the flow
-                unique_id = self.unique_id
-
+            if not error and api_device and api_device.has_data:
                 # Set unique ID for the config flow
-                # TODO: Change unique ID of the API to use only hwaddr
-                # await self.async_set_unique_id(api_device.unique_id)
-                await self.async_set_unique_id(api_device.hwaddr)
+                await self.async_set_unique_id(api_device.mac)
 
-                # Abort the flow if the unique ID was set during initial setup and does not match
-                if unique_id is not None:
-                    self._abort_if_unique_id_mismatch()
+                # Abort the flow if an entry with the unique ID was found
+                self._abort_if_unique_id_mismatch()
 
-                # Reconfigure the config entry
+                # Reconfigure the config entry and finish the flow
                 return self.async_update_reload_and_abort(
-                    self._get_reconfigure_entry(),
+                    config_entry,
                     data_updates=data,
                 )
+            elif not error:
+                error = "unknown"
 
         # Show the form to the user
         return self.async_show_form(
-            step_id="reconfigure", data_schema=create_schema(data)
+            step_id="reconfigure",
+            data_schema=create_schema(data),
+            errors=None if error is None else {"base": error},
         )
 
     async def async_step_reauth(self, entry_data: Mapping[str, Any]) -> FlowResult:
@@ -147,7 +157,7 @@ class MPowerConfigFlow(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle the reauthentication confirmation dialog."""
-        config_entry = self.config_entry
+        config_entry = self._get_reauth_entry()
         data = config_entry.data.copy()
         error = None
 

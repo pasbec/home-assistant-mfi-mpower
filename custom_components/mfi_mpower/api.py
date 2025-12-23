@@ -8,9 +8,10 @@ from typing import Any
 
 # pylint: disable=unused-import
 import asyncssh
-from mfi_mpower.device import MPowerLED, MPowerDevice
+from mfi_mpower.device import MPowerDevice
 from mfi_mpower.entities import MPowerEntity, MPowerSensor, MPowerSwitch
 from mfi_mpower.exceptions import MPowerDataError
+from mfi_mpower.interface import MPowerLED, MPowerNetwork
 from mfi_mpower.session import (
     MPowerAuthenticationError,
     MPowerCommandError,
@@ -47,6 +48,7 @@ def create_data(
     assert all(
         [
             MPowerLED,
+            MPowerNetwork,
             MPowerDevice,
             MPowerEntity,
             MPowerSensor,
@@ -81,6 +83,13 @@ async def create_device_for_flow(
         _LOGGER.debug("Device creation failed: %s", exc)
         return None, "input_error"
 
+    _LOGGER.debug(
+        "Device creation OK: %s, %s, %s",
+        api_device.hostname,
+        api_device.mac,
+        api_device.data,
+    )
+
     try:
         await api_device.interface.connect()
     except MPowerConnectionError as exc:
@@ -93,7 +102,14 @@ async def create_device_for_flow(
         _LOGGER.exception("Unhandled exception occurred: %s", exc)
         return None, "unknown"
 
-    return api_device, None
+    _LOGGER.debug(
+        "Device connection OK: %s, %s, %s",
+        api_device.hostname,
+        api_device.mac,
+        api_device.data,
+    )
+
+    return api_device, "debug"
 
 
 async def update_device(api_device: MPowerDevice) -> None:
@@ -101,7 +117,7 @@ async def update_device(api_device: MPowerDevice) -> None:
     async with UpdateHandler() as handler:
         while True:
             try:
-                await api_device.update()
+                await api_device.refresh()
                 break
             except Exception as exc:  # pylint: disable=broad-except
                 handler.handle(exc)
@@ -124,13 +140,13 @@ async def create_coordinator(
     # Create coordinator
     coordinator = MPowerDataUpdateCoordinator(
         hass=hass,
-        device=api_device,
+        api_device=api_device,
         scan_interval=data.get(CONF_SCAN_INTERVAL, DEFAULTS[CONF_SCAN_INTERVAL]),
         config_entry=config_entry,
     )
 
-    # Let the coordinator take over if the device was not updated yet
-    if not api_device.updated:
+    # Let the coordinator take over if the device was not refreshed yet
+    if not api_device.has_data:
         await coordinator.async_config_entry_first_refresh()
 
     return coordinator

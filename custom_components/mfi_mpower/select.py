@@ -60,7 +60,7 @@ async def async_create_entities(
 class MPowerSelectEntity(MPowerCoordinatorEntity, SelectEntity):
     """Coordinated select entity for Ubiquiti mFi mPower."""
 
-    domain: str = select.DOMAIN
+    _domain: str = select.DOMAIN
 
 
 class MPowerLEDSelectEntity(MPowerSelectEntity):
@@ -73,11 +73,6 @@ class MPowerLEDSelectEntity(MPowerSelectEntity):
     def _handle_attr_update(self) -> None:
         """Handle attribute updates from API data."""
         self._attr_current_option = self.api_device.led.name
-
-    @property
-    def unique_id(self) -> str:
-        """Return the unique id of the select ."""
-        return f"{self.api_device.unique_id}-led"
 
     async def async_select_option(self, option: str) -> None:
         """Change the select option."""

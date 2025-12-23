@@ -31,36 +31,38 @@ _LOGGER = logging.getLogger(__name__)
 class MPowerDataUpdateCoordinator(DataUpdateCoordinator):
     """Ubiquiti mFi mPower data update coordinator."""
 
+    _api_device: api.MPowerDevice
+
     def __init__(
         self,
         hass: HomeAssistant,
-        device: api.MPowerDevice,
+        api_device: api.MPowerDevice,
         scan_interval: float,
         config_entry: ConfigEntry | None = None,
     ) -> None:
         """Initialize the coordinator."""
-        # Create name from config entry title or device host
-        name = api.create_title(device.host)
-        if config_entry is not None:
-            name = config_entry.title
+        # Set the API device
+        self._api_device = api_device
 
         # Initialize the generic coordinator
         super().__init__(
             hass,
             logger=_LOGGER,
-            name=name,
+            name=api.create_title(api_device.hostname),
             update_interval=timedelta(seconds=scan_interval),
             config_entry=config_entry,
         )
 
-        # Assign the API device
-        self._api_device = device
+    @property
+    def api_device(self) -> api.MPowerDevice:
+        """Return the mFi mPower device from the coordinator."""
+        return self._api_device
 
     async def _async_update_data(self) -> list[dict]:
         """Fetch data from the device."""
         try:
-            updated = self.api_device.updated
-            timeout = DEFAULT_TIMEOUT if updated else SLOW_SETUP_MAX_WAIT
+            has_data = self.api_device.has_data
+            timeout = DEFAULT_TIMEOUT if has_data else SLOW_SETUP_MAX_WAIT
             async with async_timeout.timeout(timeout):
                 await api.update_device(self.api_device)
         except asyncio.TimeoutError as exc:
@@ -76,36 +78,41 @@ class MPowerDataUpdateCoordinator(DataUpdateCoordinator):
         self,
         entities: list[MPowerCoordinatorEntity],
     ) -> None:
-        """Migrate old unique_id for Ubiquiti mFi mPower entities."""
+        """Migrate old unique IDs for Ubiquiti mFi mPower entities."""
         registry = er.async_get(self.hass)
         for entity in entities:
-            if hasattr(entity, "old_unique_id"):
+            unique_id = entity.unique_id
+            entity_id = registry.async_get_entity_id(entity.domain, DOMAIN, unique_id)
+            for old_unique_id in entity.old_unique_ids:
                 old_entity_id = registry.async_get_entity_id(
-                    entity.domain, DOMAIN, entity.old_unique_id
+                    entity.domain, DOMAIN, old_unique_id
                 )
-                new_entity_id = registry.async_get_entity_id(
-                    entity.domain, DOMAIN, entity.unique_id
-                )
-                if old_entity_id and not new_entity_id:
-                    _LOGGER.info(
-                        "Migrating unique_id for %s: %s -> %s",
-                        old_entity_id,
-                        entity.old_unique_id,
-                        entity.unique_id,
-                    )
-                    registry.async_update_entity(
-                        old_entity_id,
-                        new_unique_id=entity.unique_id,
-                    )
-
-    @property
-    def api_device(self) -> api.MPowerDevice:
-        """Return the mFi mPower device from the coordinator."""
-        return self._api_device
+                _LOGGER.debug("Checking old unique ID %s", old_unique_id)
+                if old_entity_id:
+                    if entity_id:
+                        _LOGGER.error(
+                            "Duplicate entity found for unique ID %s with unique ID %s",
+                            unique_id,
+                            old_unique_id,
+                        )
+                    else:
+                        _LOGGER.info(
+                            "Migrating entity for unique ID %s from unique ID %s",
+                            unique_id,
+                            old_unique_id,
+                        )
+                        registry.async_update_entity(
+                            old_entity_id,
+                            new_unique_id=unique_id,
+                        )
 
 
 class MPowerCoordinatorEntity(CoordinatorEntity, ABC):
     """Coordinator entity baseclass for Ubiquiti mFi mPower entities."""
+
+    _api_entity: api.MPowerEntity | None
+    _api_unique_id: str | None
+    _old_unique_id: str | None
 
     _attr_assumed_state = False
     _attr_has_entity_name = True
@@ -116,65 +123,165 @@ class MPowerCoordinatorEntity(CoordinatorEntity, ABC):
         api_entity: api.MPowerEntity | None = None,
     ) -> None:
         """Initialize the entity."""
-        # Set optional API entity
-        self._api_entity = api_entity
-        self._api_entity_label = None
-
-        # Initialize the CoordinatorEntity
+        # Initialize the Coordinator entity
         super().__init__(coordinator)
+
+        # Set the optional API entity
+        self._api_entity = api_entity
+
+        # Create the unique IDs (requires optional API entity)
+        self._api_unique_id = self._create_unique_id()
+        self._old_unique_id = self._create_unique_id(old=True)
 
         # Update attributes from initial data
         self._handle_attr_update()
 
     @property
     @abstractmethod
-    def domain(self) -> str:
-        """Return the domain of the entity."""
+    def _domain(self) -> str:
+        """The domain of the entity."""
         pass
 
     @property
-    @abstractmethod
-    def unique_id(self) -> str:
-        """Return the unique id of the entity."""
-        pass
+    def domain(self) -> str:
+        """Return the domain of the entity."""
+        return self._domain
+
+    def _create_unique_id(self, old=False) -> str:
+        """Create the unique ID of the entity."""
+        if old:
+            macs = self.api_device.macs
+            lan = api.MPowerNetwork.LAN.name.lower()
+            wlan = api.MPowerNetwork.WLAN.name.lower()
+            unique_id = f"{macs[lan]}-{macs[wlan]}"
+        else:
+            unique_id = self.api_device.mac
+        if self.has_api_entity:
+            unique_id = f"{unique_id}-{self.api_entity.port}"
+        return unique_id
+
+    @property
+    def unique_id(self) -> list[str]:
+        """Return the unique ID of the entity."""
+        if self.translation_key:
+            return f"{self._api_unique_id}-{self.translation_key}"
+        return self._api_unique_id
+
+    @property
+    def old_unique_id(self) -> list[str]:
+        """Return the old unique ID of the entity."""
+        if self.translation_key:
+            return f"{self._old_unique_id}-{self.translation_key}"
+        return self._old_unique_id
+
+    @property
+    def _old_unique_ids(self) -> list[str]:
+        """Return additional old unique IDs of the entity."""
+        return []
+
+    @property
+    def old_unique_ids(self) -> list[str]:
+        """Return all old unique IDs of the entity."""
+        return [self.old_unique_id] + self._old_unique_ids
+
+    @property
+    def api_device(self) -> api.MPowerDevice:
+        """Return the API device of the entity."""
+        return self.coordinator.api_device
+
+    @property
+    def has_api_entity(self) -> bool:
+        """Return the if the entity is connected to some API entity."""
+        return self._api_entity is not None
+
+    @property
+    def api_entity(self) -> api.MPowerEntity | None:
+        """Return the API entity of the entity."""
+        if self.has_api_entity:
+            # Ensure the API device matches the coordinator device
+            assert self._api_entity.device == self.coordinator.api_device
+            return self._api_entity
+        return None
+
+    @property
+    def port_name(self) -> str | None:
+        """Return the port name of the entity."""
+        if self.has_api_entity:
+            return f"Port {self.api_entity.port}"
+        return None
+
+    @property
+    def device_id(self) -> str:
+        """Return the device ID of the entity."""
+        return self._api_unique_id
+
+    @property
+    def device_model(self) -> str:
+        """Return the device model of the entity."""
+        if self.has_api_entity:
+            # return self.coordinator.name
+            return f"{self.coordinator.name} {self.port_name}"
+        return self.api_device.model
+
+    @property
+    def device_name(self) -> str:
+        """Return the device name of the entity."""
+        if self.has_api_entity:
+            if self.api_entity.label:
+                return self.api_entity.label
+            else:
+                return self.port_name
+        return self.coordinator.name
+
+    @property
+    def device_info(self) -> DeviceInfo | None:
+        """Return the device info for this entity."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self.device_id)},
+            name=self.device_name,
+            manufacturer=self.api_device.manufacturer,
+            model=self.device_model,
+            via_device=(DOMAIN, self.api_device.mac),
+        )
 
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
         # Skip update without Home Assistant instance
         if self.hass is None:
-            _LOGGER.warning(
+            _LOGGER.error(
                 "Home Assistant instance not set for entity %s, skipping update",
                 self.unique_id,
             )
             return
+
+        # Update coordinator name
+        self.coordinator.name = api.create_title(self.api_device.hostname)
 
         # Get updated data from coordinator (return value from _async_update_data)
         data = self.coordinator.data
 
         # Skip update without data
         if data is None:
-            _LOGGER.warning(
+            _LOGGER.error(
                 "Data for entity %s is invalid, skipping update", self.unique_id
             )
             return
 
         # Update data
         if self.has_api_entity:
-            #
-            port_data = data.get("ports", [])
-            if len(port_data) < self.api_entity.port:
-                _LOGGER.warning(
+            # Update API entity data
+            try:
+                self.api_entity.update(data)
+            except api.MPowerDataError:
+                _LOGGER.error(
                     "Port data for entity %s is invalid, skipping update",
                     self.unique_id,
                 )
                 return
-
-            # Update API entity data
-            self.api_entity.data = port_data[self.api_entity.port - 1]
         else:
             # Update APIdevice data
-            self.api_device.data = data
+            self.api_device.update(data)
 
         # Get old device name
         old_device_name = self.device_info.get("name")
@@ -242,7 +349,14 @@ class MPowerCoordinatorEntity(CoordinatorEntity, ABC):
         self._handle_attr_update()
 
         # Write state
-        self.async_write_ha_state()
+        try:
+            self.async_write_ha_state()
+        except RuntimeError:
+            _LOGGER.error(
+                "Update attempt failed for entity %s, skipping update",
+                self.unique_id,
+            )
+            return
 
     def _handle_attr_update(self) -> None:
         """Handle (optional) attribute updates from API data."""
@@ -258,69 +372,3 @@ class MPowerCoordinatorEntity(CoordinatorEntity, ABC):
 
         # Update attributes
         self._handle_attr_update()
-
-    @property
-    def api_device(self) -> api.MPowerDevice:
-        """Return the API device of the entity."""
-        return self.coordinator.api_device
-
-    @property
-    def has_api_entity(self) -> bool:
-        """Return the if the entity is connected to some API entity."""
-        return self._api_entity is not None
-
-    @property
-    def api_entity(self) -> api.MPowerEntity | None:
-        """Return the API entity of the entity."""
-        if self.has_api_entity:
-            # Ensure the API device matches the coordinator device
-            assert self._api_entity.device == self.coordinator.api_device
-            return self._api_entity
-        return None
-
-    @property
-    def port_name(self) -> str | None:
-        """Return the port name of the entity."""
-        if self.has_api_entity:
-            # lang = getattr(self.hass.config, "language", "en")
-            # name = {"en": "Outlet", "de": "Steckdose"}.get(lang, "Port")
-            name = "Port"
-            return f"{name} {self.api_entity.port}"
-        return None
-
-    @property
-    def port_label(self) -> str | None:
-        """Return the port label of the entity."""
-        if self.has_api_entity:
-            if self.api_entity.label:
-                return self.api_entity.label
-            else:
-                return self.port_name
-        return None
-
-    @property
-    def device_model(self) -> str:
-        """Return the device model of the entity."""
-        if self.has_api_entity:
-            # return self.coordinator.name
-            return f"{self.coordinator.name} {self.port_name}"
-        return self.api_device.model
-
-    @property
-    def device_name(self) -> str:
-        """Return the device name of the entity."""
-        return self.port_label or self.coordinator.name
-
-    @property
-    def device_info(self) -> DeviceInfo | None:
-        """Return the device info for this entity."""
-        unique_id = self.api_device.unique_id
-        if self.has_api_entity:
-            unique_id = self.api_entity.unique_id
-        return DeviceInfo(
-            identifiers={(DOMAIN, unique_id)},
-            name=self.device_name,
-            manufacturer=self.api_device.manufacturer,
-            model=self.device_model,
-            via_device=(DOMAIN, self.api_device.unique_id),
-        )

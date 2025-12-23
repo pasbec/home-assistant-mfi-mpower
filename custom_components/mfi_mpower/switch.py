@@ -68,7 +68,7 @@ async def async_create_entities(
 class MPowerSwitchEntity(MPowerCoordinatorEntity, SwitchEntity):
     """Coordinated outlet switch entity for Ubiquiti mFi mPower."""
 
-    domain: str = switch.DOMAIN
+    _domain: str = switch.DOMAIN
 
 
 class MPowerLockSwitchEntity(MPowerSwitchEntity):
@@ -81,11 +81,6 @@ class MPowerLockSwitchEntity(MPowerSwitchEntity):
     def _handle_attr_update(self) -> None:
         """Handle attribute updates from API data."""
         self._attr_is_on = self.api_entity.locked
-
-    @property
-    def unique_id(self) -> str:
-        """Return the unique id of the lock switch."""
-        return f"{self.api_entity.unique_id}-lock"
 
     @property
     def icon(self) -> str | None:
@@ -113,12 +108,14 @@ class MPowerLockSwitchEntity(MPowerSwitchEntity):
 class MPowerOutletSwitchEntity(MPowerSwitchEntity):
     """Coordinated outlet switch entity for Ubiquiti mFi mPower."""
 
-    api_entity: api.MPowerSwitch
-
-    domain: str = switch.DOMAIN
-
     _attr_device_class = SwitchDeviceClass.OUTLET
+    _attr_translation_key = None
     _attr_name = None
+
+    @property
+    def _old_unique_ids(self) -> list[str]:
+        """Return additional old unique IDs of the outlet switch."""
+        return [f"{self._api_unique_id}-{k}" for k in ("switch", "outlet")]
 
     def _handle_attr_update(self) -> None:
         """Handle attribute updates from API data."""
@@ -133,19 +130,9 @@ class MPowerOutletSwitchEntity(MPowerSwitchEntity):
         return super().available
 
     @property
-    def old_unique_id(self) -> str:
-        """Return the old unique id of the outlet switch."""
-        return f"{self.api_entity.unique_id}-switch"
-
-    @property
-    def unique_id(self) -> str:
-        """Return the unique id of the outlet switch."""
-        return f"{self.api_entity.unique_id}-outlet"
-
-    @property
     def icon(self) -> str | None:
         """Return the icon of the outlet switch."""
-        if self.api_device.eu_model:
+        if self.api_device.is_eu_model:
             return "mdi:power-socket-de"
         return "mdi:power-socket-us"
 

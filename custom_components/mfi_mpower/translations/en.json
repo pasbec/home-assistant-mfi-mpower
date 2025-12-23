@@ -37,11 +37,11 @@
       "host": {
         "name": "Host"
       },
-      "ipaddr": {
+      "ip": {
         "name": "IP Address"
       },
-      "iface": {
-        "name": "Interface"
+      "network": {
+        "name": "Network Interface"
       },
       "ports": {
         "name": "Outlets"

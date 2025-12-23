@@ -86,7 +86,7 @@ async def async_create_entities(
 class MPowerSensorEntity(MPowerCoordinatorEntity, SensorEntity):
     """Coordinated sensor entity for Ubiquiti mFi mPower sensors."""
 
-    domain: str = sensor.DOMAIN
+    _domain: str = sensor.DOMAIN
 
 
 class MPowerHostSensorEntity(MPowerSensorEntity):
@@ -95,11 +95,6 @@ class MPowerHostSensorEntity(MPowerSensorEntity):
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_icon = "mdi:dns"
     _attr_translation_key = "host"
-
-    @property
-    def unique_id(self) -> str:
-        """Return the unique id of the host sensor."""
-        return f"{self.api_device.unique_id}-host"
 
     @property
     def native_value(self) -> str:
@@ -112,41 +107,41 @@ class MPowerIPSensorEntity(MPowerSensorEntity):
 
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_icon = "mdi:ip"
-    _attr_translation_key = "ipaddr"
+    _attr_translation_key = "ip"
 
     @property
-    def unique_id(self) -> str:
-        """Return the unique id of the IP sensor."""
-        return f"{self.api_device.unique_id}-ipaddr"
+    def _old_unique_ids(self) -> list[str]:
+        """Return additional old unique IDs of the IP sensor."""
+        return [f"{self._api_unique_id}-{k}" for k in ("ipaddr",)]
 
     @property
-    def native_value(self) -> str:
+    def native_value(self) -> str | None:
         """Return the native value of the IP sensor."""
-        return self.api_device.ipaddr
+        return self.api_device.ip
 
 
 class MPowerInterfaceSensorEntity(MPowerSensorEntity):
     """Coordinated sensor entity for Ubiquiti mFi mPower interface sensors."""
 
     _attr_entity_category = EntityCategory.DIAGNOSTIC
-    _attr_translation_key = "iface"
+    _attr_translation_key = "network"
 
     @property
-    def unique_id(self) -> str:
-        """Return the unique id of the interface sensor."""
-        return f"{self.api_device.unique_id}-iface"
+    def _old_unique_ids(self) -> list[str]:
+        """Return additional old unique IDs of the network interface sensor."""
+        return [f"{self._api_unique_id}-{k}" for k in ("iface",)]
 
     @property
     def icon(self) -> str | None:
-        """Return the icon of the interface sensor."""
-        if self.api_device.iface == "lan":
+        """Return the icon of the network interface sensor."""
+        if self.api_device.network == api.MPowerNetwork.LAN:
             return "mdi:lan"
         return "mdi:wifi"
 
     @property
-    def native_value(self) -> str:
-        """Return the native value of the interface sensor."""
-        return self.api_device.iface
+    def native_value(self) -> str | None:
+        """Return the native value of the network interface sensor."""
+        return None if self.api_device.network is None else self.api_device.network.name
 
 
 class MPowerPortsSensorEntity(MPowerSensorEntity):
@@ -156,19 +151,14 @@ class MPowerPortsSensorEntity(MPowerSensorEntity):
     _attr_translation_key = "ports"
 
     @property
-    def unique_id(self) -> str:
-        """Return the unique id of the ports sensor."""
-        return f"{self.api_device.unique_id}-ports"
-
-    @property
     def icon(self) -> str | None:
         """Return the icon of the ports sensor."""
-        if self.api_device.eu_model:
+        if self.api_device.is_eu_model:
             return "mdi:power-socket-de"
         return "mdi:power-socket-us"
 
     @property
-    def native_value(self) -> str:
+    def native_value(self) -> int | None:
         """Return the native value of the ports sensor."""
         return self.api_device.ports
 
@@ -184,12 +174,7 @@ class MPowerPollSensorEntity(MPowerSensorEntity):
     _attr_translation_key = "poll"
 
     @property
-    def unique_id(self) -> str:
-        """Return the unique id of the poll sensor."""
-        return f"{self.api_device.unique_id}-poll"
-
-    @property
-    def native_value(self) -> str:
+    def native_value(self) -> float | None:
         """Return the native value of the poll sensor."""
         return self.coordinator.update_interval.total_seconds()
 
@@ -197,18 +182,11 @@ class MPowerPollSensorEntity(MPowerSensorEntity):
 class MPowerPowerSensorEntity(MPowerSensorEntity):
     """Coordinated sensor entity for Ubiquiti mFi mPower power sensors."""
 
-    api_entity: api.MPowerSensor
-
     _attr_device_class = SensorDeviceClass.POWER
     _attr_native_unit_of_measurement = UnitOfPower.WATT
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_suggested_display_precision = 0
     _attr_translation_key = "power"
-
-    @property
-    def unique_id(self) -> str:
-        """Return the unique id of the sensor."""
-        return f"{self.api_entity.unique_id}-power"
 
     @property
     def native_value(self) -> float | None:
@@ -219,18 +197,11 @@ class MPowerPowerSensorEntity(MPowerSensorEntity):
 class MPowerCurrentSensorEntity(MPowerSensorEntity):
     """Coordinated sensor entity for Ubiquiti mFi mPower current sensors."""
 
-    api_entity: api.MPowerSensor
-
     _attr_device_class = SensorDeviceClass.CURRENT
     _attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_suggested_display_precision = 2
     _attr_translation_key = "current"
-
-    @property
-    def unique_id(self) -> str:
-        """Return the unique id of the sensor."""
-        return f"{self.api_entity.unique_id}-current"
 
     @property
     def native_value(self) -> float | None:
@@ -241,18 +212,11 @@ class MPowerCurrentSensorEntity(MPowerSensorEntity):
 class MPowerVoltageSensorEntity(MPowerSensorEntity):
     """Coordinated sensor entity for Ubiquiti mFi mPower voltage sensors."""
 
-    api_entity: api.MPowerSensor
-
     _attr_device_class = SensorDeviceClass.VOLTAGE
     _attr_native_unit_of_measurement = UnitOfElectricPotential.VOLT
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_suggested_display_precision = 0
     _attr_translation_key = "voltage"
-
-    @property
-    def unique_id(self) -> str:
-        """Return the unique id of the sensor."""
-        return f"{self.api_entity.unique_id}-voltage"
 
     @property
     def native_value(self) -> float | None:
@@ -263,18 +227,11 @@ class MPowerVoltageSensorEntity(MPowerSensorEntity):
 class MPowerPowerFactorSensorEntity(MPowerSensorEntity):
     """Coordinated sensor entity for Ubiquiti mFi mPower power factor sensors."""
 
-    api_entity: api.MPowerSensor
-
     _attr_device_class = SensorDeviceClass.POWER_FACTOR
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_suggested_display_precision = 0
     _attr_translation_key = "powerfactor"
-
-    @property
-    def unique_id(self) -> str:
-        """Return the unique id of the sensor."""
-        return f"{self.api_entity.unique_id}-powerfactor"
 
     @property
     def native_value(self) -> float | None:
@@ -293,11 +250,6 @@ class MPowerEnergySensorEntity(MPowerSensorEntity):
     _attr_device_class = SensorDeviceClass.ENERGY
     _attr_suggested_display_precision = 2
     _attr_translation_key = "energy"
-
-    @property
-    def unique_id(self) -> str:
-        """Return the unique id of the sensor."""
-        return f"{self.api_entity.unique_id}-energy"
 
     @property
     def native_value(self) -> float | None:

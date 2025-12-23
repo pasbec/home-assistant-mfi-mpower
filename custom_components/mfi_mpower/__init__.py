@@ -16,13 +16,12 @@ PLATFORMS: list[Platform] = [Platform.SWITCH, Platform.SENSOR, Platform.SELECT]
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Set up integration from a config entry."""
+    data = {**config_entry.data, **config_entry.options}
+
     title = api.create_title(config_entry.data[CONF_HOST])
     if config_entry.title != title:
         hass.config_entries.async_update_entry(config_entry, title=title)
     hass.data.setdefault(DOMAIN, {})
-
-    # Get data merged with options
-    data = {**config_entry.data, **config_entry.options}
 
     coordinator = await api.create_coordinator(
         hass=hass, data=data, config_entry=config_entry
@@ -37,18 +36,17 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     device_registry = dr.async_get(hass)
     device_registry.async_get_or_create(
         config_entry_id=config_entry.entry_id,
-        configuration_url=f"http://{api_device.host}",
+        configuration_url=f"http://{api_device.hostname}",
         connections={
-            (dr.CONNECTION_NETWORK_MAC, hwaddr)
-            for hwaddr in api_device.hwaddrs.values()
+            (dr.CONNECTION_NETWORK_MAC, hwaddr) for hwaddr in api_device.macs.values()
         },
-        hw_version=api_device.hw_version,
-        identifiers={(DOMAIN, api_device.unique_id)},
+        hw_version=api_device.revision,
+        identifiers={(DOMAIN, api_device.mac)},
         manufacturer=api_device.manufacturer,
         name=api_device.name,
         model=api_device.model,
         model_id=api_device.model_id,
-        sw_version=api_device.sw_version,
+        sw_version=api_device.firmware,
     )
 
     await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
