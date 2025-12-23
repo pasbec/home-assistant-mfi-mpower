@@ -79,32 +79,52 @@ class MPowerDataUpdateCoordinator(DataUpdateCoordinator):
         entities: list[MPowerCoordinatorEntity],
     ) -> None:
         """Migrate old unique IDs for Ubiquiti mFi mPower entities."""
-        registry = er.async_get(self.hass)
+        # GEt registries
+        entity_registry = er.async_get(self.hass)
+        device_registry = dr.async_get(self.hass)
+
+        # Check all entities
         for entity in entities:
+            # Get unique ID and entity ID
             unique_id = entity.unique_id
-            entity_id = registry.async_get_entity_id(entity.domain, DOMAIN, unique_id)
+            entity_id = entity_registry.async_get_entity_id(
+                entity.domain, DOMAIN, unique_id
+            )
+
+            # Check all old unique entity IDs
             for old_unique_id in entity.old_unique_ids:
-                old_entity_id = registry.async_get_entity_id(
+                # Search for entity with old unique ID
+                old_entity_id = entity_registry.async_get_entity_id(
                     entity.domain, DOMAIN, old_unique_id
                 )
-                _LOGGER.debug("Checking old unique ID %s", old_unique_id)
                 if old_entity_id:
+                    # Skip if new entity already exists
                     if entity_id:
                         _LOGGER.error(
                             "Duplicate entity found for unique ID %s with unique ID %s",
                             unique_id,
                             old_unique_id,
                         )
+                    # Migrate old entity to new unique ID
                     else:
                         _LOGGER.info(
                             "Migrating entity for unique ID %s from unique ID %s",
                             unique_id,
                             old_unique_id,
                         )
-                        registry.async_update_entity(
+                        entity_registry.async_update_entity(
                             old_entity_id,
                             new_unique_id=unique_id,
                         )
+
+            # Check all old unique device IDs
+            for old_device_id in entity.old_device_ids:
+                old_device = device_registry.async_get_device(
+                    identifiers={(DOMAIN, old_device_id)}
+                )
+                # Remove old devices from device registry
+                if old_device:
+                    device_registry.async_remove_device(old_device.id)
 
 
 class MPowerCoordinatorEntity(CoordinatorEntity, ABC):
@@ -209,6 +229,11 @@ class MPowerCoordinatorEntity(CoordinatorEntity, ABC):
         if self.has_api_entity:
             return f"Port {self.api_entity.port}"
         return None
+
+    @property
+    def old_device_ids(self) -> list[str]:
+        """Return old device IDs of the entity."""
+        return [self._old_unique_id]
 
     @property
     def device_id(self) -> str:
