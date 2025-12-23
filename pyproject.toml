@@ -10,7 +10,7 @@ readme = "README.md"
 authors = [{ name = "pasbec", email = "p.b-dev+mfi-mpower@mailbox.org" }]
 license = { file = "LICENSE" }
 keywords = ["ubiquiti", "mfi", "mpower"]
-dependencies = ["homeassistant>=2025.1.4", "mfi-mpower >= 3.0.0"]
+dependencies = ["homeassistant>=2025.1.4", "mfi-mpower == 3.0.0"]
 requires-python = ">=3.9"
 
 [project.optional-dependencies]
