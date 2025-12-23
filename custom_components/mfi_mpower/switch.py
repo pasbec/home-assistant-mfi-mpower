@@ -115,7 +115,7 @@ class MPowerOutletSwitchEntity(MPowerSwitchEntity):
     @property
     def _old_unique_ids(self) -> list[str]:
         """Return additional old unique IDs of the outlet switch."""
-        return [f"{self._api_unique_id}-{k}" for k in ("switch", "outlet")]
+        return [f"{self._old_unique_id}-{k}" for k in ("switch", "outlet")]
 
     def _handle_attr_update(self) -> None:
         """Handle attribute updates from API data."""
