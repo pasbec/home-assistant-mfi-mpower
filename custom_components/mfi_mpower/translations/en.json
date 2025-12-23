@@ -1,14 +1,5 @@
 {
   "config": {
-    "abort": {
-      "already_configured": "Device is already configured"
-    },
-    "error": {
-      "input_error": "Input error",
-      "cannot_connect": "Failed to connect",
-      "invalid_auth": "Invalid credentials",
-      "unknown": "Unknown error"
-    },
     "step": {
       "user": {
         "data": {
@@ -18,16 +9,25 @@
           "username": "Username"
         }
       }
+    },
+    "error": {
+      "input_error": "Input error",
+      "cannot_connect": "Failed to connect",
+      "invalid_auth": "Invalid credentials",
+      "unknown": "Unknown error"
+    },
+    "abort": {
+      "already_configured": "Device is already configured",
+      "unique_id_mismatch": "Device identifier does not match",
+      "reconfigure_successful": "Configuration was successful",
+      "reauth_successful": "Authentication was successful"
     }
   },
   "options": {
     "step": {
       "init": {
         "data": {
-          "host": "Host",
-          "password": "Password",
-          "scan_interval": "Update Interval (seconds)",
-          "username": "Username"
+          "scan_interval": "Update Interval (seconds)"
         }
       }
     }

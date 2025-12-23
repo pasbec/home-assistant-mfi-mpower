@@ -1,14 +1,5 @@
 {
   "config": {
-    "abort": {
-      "already_configured": "Gerät ist bereits konfiguriert"
-    },
-    "error": {
-      "input_error": "Eingabefehler",
-      "cannot_connect": "Verbindung ist fehlgeschlagen",
-      "invalid_auth": "Ungültige Zugangsdaten",
-      "unknown": "Unbekannter Fehler"
-    },
     "step": {
       "user": {
         "data": {
@@ -18,16 +9,25 @@
           "username": "Benutzername"
         }
       }
+    },
+    "error": {
+      "input_error": "Eingabefehler",
+      "cannot_connect": "Verbindung ist fehlgeschlagen",
+      "invalid_auth": "Ungültige Zugangsdaten",
+      "unknown": "Unbekannter Fehler"
+    },
+    "abort": {
+      "already_configured": "Gerät ist bereits konfiguriert",
+      "unique_id_mismatch": "Gerätekennung stimmt nicht überein",
+      "reconfigure_successful": "Konfiguration war erfolgreich",
+      "reauth_successful": "Authentifizierung war erfolgreich"
     }
   },
   "options": {
     "step": {
       "init": {
         "data": {
-          "host": "Host",
-          "password": "Passwort",
-          "scan_interval": "Abfrageintervall (Sekunden)",
-          "username": "Benutzername"
+          "scan_interval": "Abfrageintervall (Sekunden)"
         }
       }
     }

@@ -141,17 +141,37 @@ class MPowerCoordinatorEntity(CoordinatorEntity, ABC):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
+        # Skip update without Home Assistant instance
+        if self.hass is None:
+            _LOGGER.warning(
+                "Home Assistant instance not set for entity %s, skipping update",
+                self.unique_id,
+            )
+            return
+
         # Get updated data from coordinator (return value from _async_update_data)
         data = self.coordinator.data
 
         # Skip update without data
         if data is None:
+            _LOGGER.warning(
+                "Data for entity %s is invalid, skipping update", self.unique_id
+            )
             return
 
         # Update data
         if self.has_api_entity:
+            #
+            port_data = data.get("ports", [])
+            if len(port_data) < self.api_entity.port:
+                _LOGGER.warning(
+                    "Port data for entity %s is invalid, skipping update",
+                    self.unique_id,
+                )
+                return
+
             # Update API entity data
-            self.api_entity.data = data["ports"][self.api_entity.port - 1]
+            self.api_entity.data = port_data[self.api_entity.port - 1]
         else:
             # Update APIdevice data
             self.api_device.data = data

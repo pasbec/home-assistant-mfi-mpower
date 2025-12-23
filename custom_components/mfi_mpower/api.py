@@ -70,6 +70,32 @@ async def create_device(hass: HomeAssistant, data: dict[str, Any]) -> MPowerDevi
     return MPowerDevice(**create_data(hass, data))
 
 
+async def create_device_for_flow(
+    hass: HomeAssistant, data: dict[str, Any]
+) -> tuple[MPowerDevice | None, str | None]:
+    """Validate the config data ."""
+
+    try:
+        api_device = await create_device(hass, data)
+    except Exception as exc:  # pylint: disable=broad-except
+        _LOGGER.debug("Device creation failed: %s", exc)
+        return None, "input_error"
+
+    try:
+        await api_device.interface.connect()
+    except MPowerConnectionError as exc:
+        _LOGGER.debug("Connection failed: %s", exc)
+        return None, "cannot_connect"
+    except MPowerAuthenticationError as exc:
+        _LOGGER.debug("Authentication failed: %s", exc)
+        return None, "invalid_auth"
+    except Exception as exc:  # pylint: disable=broad-except
+        _LOGGER.exception("Unhandled exception occurred: %s", exc)
+        return None, "unknown"
+
+    return api_device, None
+
+
 async def update_device(api_device: MPowerDevice) -> None:
     """Update a MPowerDevice instance."""
     async with UpdateHandler() as handler:

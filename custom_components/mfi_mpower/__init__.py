@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import logging
-
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
@@ -15,8 +13,6 @@ from .const import CONF_HOST, DOMAIN
 
 PLATFORMS: list[Platform] = [Platform.SWITCH, Platform.SENSOR, Platform.SELECT]
 
-_LOGGER = logging.getLogger(__name__)
-
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Set up integration from a config entry."""
@@ -25,6 +21,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         hass.config_entries.async_update_entry(config_entry, title=title)
     hass.data.setdefault(DOMAIN, {})
 
+    # Get data merged with options
     data = {**config_entry.data, **config_entry.options}
 
     coordinator = await api.create_coordinator(
@@ -34,9 +31,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     hass.data[DOMAIN][config_entry.entry_id] = coordinator
 
-    config_entry.async_on_unload(
-        config_entry.add_update_listener(async_update_listener)
-    )
+    # Add update listener to reload integration after options changes
+    config_entry.async_on_unload(config_entry.add_update_listener(async_update_reload))
 
     device_registry = dr.async_get(hass)
     device_registry.async_get_or_create(
@@ -60,14 +56,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     return True
 
 
-async def async_update_listener(hass: HomeAssistant, config_entry: ConfigEntry):
-    """Handle options update."""
-    coordinator = hass.data[DOMAIN].get(config_entry.entry_id)
-
-    # Reload integration to apply new options
-    if coordinator is not None:
-        _LOGGER.debug("Reload %s device %s", DOMAIN, coordinator.api_device.host)
-        await hass.config_entries.async_reload(config_entry.entry_id)
+async def async_update_reload(hass: HomeAssistant, config_entry: ConfigEntry):
+    """Listener to trigger a reload of the config entry."""
+    await hass.config_entries.async_reload(config_entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:

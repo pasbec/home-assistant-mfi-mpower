@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-import logging
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlow
@@ -12,38 +11,33 @@ from homeassistant.const import (
     CONF_PASSWORD,
     CONF_USERNAME,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 
 from . import api
-from .const import DOMAIN
-from .options_flow import create_schema, MPowerOptionsFlowHandler
-
-_LOGGER = logging.getLogger(__name__)
+from .const import CONF_SCAN_INTERVAL, DOMAIN
+from .schema import create_schema
 
 
-async def validate_data(hass: HomeAssistant, data: dict[str, Any]) -> str | None:
-    """Validate the config data ."""
+# TODO: Use OptionsFlowWithReload with homeassistant>=2025.8.0
+#       and remove async_update_listener in __init__.py afterwards
+class MPowerOptionsFlow(OptionsFlow):
+    """Handle options flows for Ubiquiti mFi mPower."""
 
-    try:
-        api_device = await api.create_device(hass, data)
-    except Exception as exc:  # pylint: disable=broad-except
-        _LOGGER.debug("Device creation failed: %s", exc)
-        return "input_error"
+    async def async_step_init(self, user_input=None) -> FlowResult:
+        """Handle the initial step."""
+        # User input is available
+        if user_input is not None:
+            return self.async_create_entry(data=user_input)
 
-    try:
-        await api_device.interface.connect()
-    except api.MPowerConnectionError as exc:
-        _LOGGER.debug("Connection failed: %s", exc)
-        return "cannot_connect"
-    except api.MPowerAuthenticationError as exc:
-        _LOGGER.debug("Authentication failed: %s", exc)
-        return "invalid_auth"
-    except Exception as exc:  # pylint: disable=broad-except
-        _LOGGER.exception("Unhandled exception occurred: %s", exc)
-        return "unknown"
+        # Get data merged with options
+        data = {**self.config_entry.data, **self.config_entry.options}
 
-    return None
+        # Show the form to the user
+        return self.async_show_form(
+            step_id="init",
+            data_schema=create_schema(data, conf=(CONF_SCAN_INTERVAL,)),
+        )
 
 
 class MPowerConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -51,66 +45,134 @@ class MPowerConfigFlow(ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
-    _reauth_entry: ConfigEntry
-
     @staticmethod
-    def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
-        return MPowerOptionsFlowHandler()
+    @callback
+    def async_get_options_flow(
+        config_entry: ConfigEntry,
+    ) -> MPowerOptionsFlow:
+        """Create the options flow."""
+        return MPowerOptionsFlow()
+
+    @property
+    def config_entry(self) -> ConfigEntry | None:
+        """Return the config entry being configured."""
+        return self.hass.config_entries.async_get_entry(self.context["entry_id"])
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Handle the user step."""
+        """Handle the (initial) setup flow."""
         data = {}
         error = None
 
+        # User input is available
         if user_input:
+            # Update data with user input
             data.update(user_input)
-            error = await validate_data(self.hass, data=data)
 
-            # NOTE: If data is validated, a new entry is created
-            if not error:
+            # Validate data by creating device instance
+            (api_device, error) = await api.create_device_for_flow(self.hass, data=data)
+
+            # Proceed only if API device is available and no error occurred
+            if api_device is not None and not error:
+                # Set unique ID for the config flow
+                # TODO: Change unique ID of the API to use only hwaddr
+                # await self.async_set_unique_id(api_device.unique_id)
+                await self.async_set_unique_id(api_device.hwaddr)
+
+                # Abort the flow if a config entry with the same unique ID exists
+                self._abort_if_unique_id_configured(
+                    updates={CONF_HOST: api_device.host}
+                )
+
+                # Create the config entry
                 return self.async_create_entry(
                     title=api.create_title(user_input[CONF_HOST]),
                     data=data,
                 )
 
+        # Show the form to the user
         return self.async_show_form(
             step_id="user",
             data_schema=create_schema(data),
             errors=None if error is None else {"base": error},
         )
 
-    async def async_step_reauth(self, entry_data: Mapping[str, Any]) -> FlowResult:
-        """Handle a reauthorization flow request."""
-        reauth_entry = self.hass.config_entries.async_get_entry(
-            self.context["entry_id"]
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle the reconfiguration flow."""
+        config_entry = self.config_entry
+        data = config_entry.data.copy()
+        error = None
+
+        # User input is available
+        if user_input:
+            # Update data with user input
+            data.update(user_input)
+
+            # Validate data by creating device instance
+            (api_device, error) = await api.create_device_for_flow(self.hass, data=data)
+
+            # Proceed only if API device is available and no error occurred
+            if api_device is not None and not error:
+                # Get the unique ID of the flow
+                unique_id = self.unique_id
+
+                # Set unique ID for the config flow
+                # TODO: Change unique ID of the API to use only hwaddr
+                # await self.async_set_unique_id(api_device.unique_id)
+                await self.async_set_unique_id(api_device.hwaddr)
+
+                # Abort the flow if the unique ID was set during initial setup and does not match
+                if unique_id is not None:
+                    self._abort_if_unique_id_mismatch()
+
+                # Reconfigure the config entry
+                return self.async_update_reload_and_abort(
+                    self._get_reconfigure_entry(),
+                    data_updates=data,
+                )
+
+        # Show the form to the user
+        return self.async_show_form(
+            step_id="reconfigure", data_schema=create_schema(data)
         )
-        if reauth_entry is not None:
-            self._reauth_entry = reauth_entry
+
+    async def async_step_reauth(self, entry_data: Mapping[str, Any]) -> FlowResult:
+        """Handle the reauthentication flow."""
         return await self.async_step_reauth_confirm()
 
     async def async_step_reauth_confirm(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Handle the reauth confirmation step."""
-        data = dict(self._reauth_entry.data)
+        """Handle the reauthentication confirmation dialog."""
+        config_entry = self.config_entry
+        data = config_entry.data.copy()
         error = None
 
+        # Use input is available
         if user_input:
+            # Update data with user input
             data.update(user_input)
-            error = await validate_data(self.hass, data=data)
 
-            # NOTE: If data is validated, the entry is updated and reloaded
+            # Validate data by creating device instance
+            (_, error) = await api.create_device_for_flow(self.hass, data=data)
+
+            # Proceed only if no error occurred
             if not error:
-                self.hass.config_entries.async_update_entry(
-                    self._reauth_entry, data=data
-                )
+                # Update the config entry with new data
+                self.hass.config_entries.async_update_entry(config_entry, data=data)
+
+                # Reload the config entry
                 self.hass.async_create_task(
-                    self.hass.config_entries.async_reload(self._reauth_entry.entry_id)
+                    self.hass.config_entries.async_reload(config_entry.entry_id)
                 )
+
+                # Abort the flow indicating success
                 return self.async_abort(reason="reauth_successful")
 
+        # Show the form to the user
         return self.async_show_form(
             step_id="reauth_confirm",
             data_schema=create_schema(data, conf=(CONF_USERNAME, CONF_PASSWORD)),
