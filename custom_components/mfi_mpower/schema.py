@@ -13,7 +13,7 @@ from homeassistant.const import (
 from homeassistant.helpers import selector
 from homeassistant.helpers import config_validation as cv
 
-from .const import DEFAULTS, DEFAULT_TIMEOUT
+from .const import DEFAULT_TIMEOUT, DEFAULTS
 
 
 def create_schema(data=None, conf: tuple | list | None = None):

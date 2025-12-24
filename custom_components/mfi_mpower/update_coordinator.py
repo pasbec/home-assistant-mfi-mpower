@@ -79,7 +79,7 @@ class MPowerDataUpdateCoordinator(DataUpdateCoordinator):
         entities: list[MPowerCoordinatorEntity],
     ) -> None:
         """Migrate old unique IDs for Ubiquiti mFi mPower entities."""
-        # GEt registries
+        # Get registries
         entity_registry = er.async_get(self.hass)
         device_registry = dr.async_get(self.hass)
 

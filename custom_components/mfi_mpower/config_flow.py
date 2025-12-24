@@ -11,12 +11,13 @@ from homeassistant.const import (
     CONF_HOST,
     CONF_PASSWORD,
     CONF_USERNAME,
+    CONF_SCAN_INTERVAL,
 )
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 
-from . import api
-from .const import CONF_SCAN_INTERVAL, DOMAIN
+from . import api, CONFIG_VERSION
+from .const import DOMAIN
 from .schema import create_schema
 
 _LOGGER = logging.getLogger(__name__)
@@ -47,7 +48,7 @@ class MPowerOptionsFlow(OptionsFlow):
 class MPowerConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle config flows for Ubiquiti mFi mPower."""
 
-    VERSION = 1
+    VERSION, MINOR_VERSION = CONFIG_VERSION.major, CONFIG_VERSION.minor
 
     @staticmethod
     @callback
@@ -74,7 +75,7 @@ class MPowerConfigFlow(ConfigFlow, domain=DOMAIN):
 
             # Proceed only if API device is available and no error occurred
             if not error and api_device and api_device.has_data:
-                # Debug: Log config entries
+                # List current and other config entries
                 _LOGGER.debug(
                     "Setting up config entry for device: %s (%s)",
                     api_device.host,
@@ -128,6 +129,19 @@ class MPowerConfigFlow(ConfigFlow, domain=DOMAIN):
 
             # Proceed only if API device is available and no error occurred
             if not error and api_device and api_device.has_data:
+                # List current and other config entries
+                _LOGGER.debug(
+                    "Reconfiguring config entry for device: %s (%s)",
+                    api_device.host,
+                    api_device.mac,
+                )
+                for entry in self.hass.config_entries.async_entries(DOMAIN):
+                    _LOGGER.debug(
+                        "Existing config entry for device: %s (%s)",
+                        entry.data.get(CONF_HOST),
+                        entry.unique_id,
+                    )
+
                 # Set unique ID for the config flow
                 await self.async_set_unique_id(api_device.mac)
 

@@ -18,7 +18,9 @@ async def async_get_config_entry_diagnostics(
     """Return diagnostics for a config entry."""
 
     return {
+        "version": f"{entry.version}.{entry.minor_version}",
         "unique_id": entry.unique_id,
+        "title": entry.title,
         "data": async_redact_data(entry.data, TO_REDACT),
         "options": async_redact_data(entry.options, TO_REDACT),
     }

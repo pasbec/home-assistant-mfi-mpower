@@ -2,16 +2,23 @@
 
 from __future__ import annotations
 
+import logging
+
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import Platform
+from homeassistant.const import Platform, CONF_HOST, CONF_SSL, CONF_VERIFY_SSL
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.device_registry import DeviceEntry
 
 from . import api
-from .const import CONF_HOST, DOMAIN
+from .const import DOMAIN
+from .version import Version
 
 PLATFORMS: list[Platform] = [Platform.SWITCH, Platform.SENSOR, Platform.SELECT]
+
+CONFIG_VERSION = Version(1, 2)
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
@@ -78,12 +85,55 @@ async def async_remove_config_entry_device(
     entity_registry = er.async_get(hass)
     entity_device_ids = {entry.device_id for entry in entity_registry.entities.values()}
 
-    # Allow only removal of orphaned port devices
+    # Allow only removal of orphaned devices
     if device_id not in entity_device_ids:
         return True
 
-    # Allow removal of port devices
-    if device_entry.via_device_id is not None:
-        return True
-
     return False
+
+
+async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
+    """Migrate config entry in case of version changes."""
+    version = Version(config_entry.version, config_entry.minor_version)
+    unique_id = config_entry.unique_id
+    title = config_entry.title
+    data = dict(config_entry.data)
+    options = dict(config_entry.options)
+
+    # Log migration info
+    _LOGGER.error(
+        "Migrating config for %s from version %s to %s", title, version, CONFIG_VERSION
+    )
+
+    if version > CONFIG_VERSION:
+        # Downgrades from a future version are not supported
+        _LOGGER.error("Config version downgrades are not supported")
+        return False
+
+    if version < Version(1, 2):
+        # Add missing unique ID to config entry
+        try:
+            api_device: api.MPowerDevice = api.create_device(hass, data)
+            await api_device.refresh()
+        except Exception as exc:  # pylint: disable=broad-except
+            _LOGGER.error("Device creation failed during migration: %s", exc)
+            return False
+        unique_id = api_device.mac
+
+        # Remove deprecated SSL options
+        for key in (CONF_SSL, CONF_VERIFY_SSL):
+            data.pop(key, None)
+            options.pop(key, None)
+
+    # Update config entry to new version
+    hass.config_entries.async_update_entry(
+        config_entry,
+        version=CONFIG_VERSION.major,
+        minor_version=CONFIG_VERSION.minor,
+        unique_id=unique_id,
+        title=title,
+        data=data,
+        options=options,
+    )
+
+    return True

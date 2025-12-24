@@ -67,7 +67,7 @@ def create_data(
     }
 
 
-async def create_device(hass: HomeAssistant, data: dict[str, Any]) -> MPowerDevice:
+def create_device(hass: HomeAssistant, data: dict[str, Any]) -> MPowerDevice:
     """Construct a new MPowerDevice instance from hass and config data."""
     return MPowerDevice(**create_data(hass, data))
 
@@ -78,20 +78,13 @@ async def create_device_for_flow(
     """Validate the config data ."""
 
     try:
-        api_device = await create_device(hass, data)
+        api_device = create_device(hass, data)
     except Exception as exc:  # pylint: disable=broad-except
         _LOGGER.debug("Device creation failed: %s", exc)
         return None, "input_error"
 
-    _LOGGER.debug(
-        "Device creation OK: %s, %s, %s",
-        api_device.hostname,
-        api_device.mac,
-        api_device.data,
-    )
-
     try:
-        await api_device.interface.connect()
+        await api_device.refresh()
     except MPowerConnectionError as exc:
         _LOGGER.debug("Connection failed: %s", exc)
         return None, "cannot_connect"
@@ -102,14 +95,7 @@ async def create_device_for_flow(
         _LOGGER.exception("Unhandled exception occurred: %s", exc)
         return None, "unknown"
 
-    _LOGGER.debug(
-        "Device connection OK: %s, %s, %s",
-        api_device.hostname,
-        api_device.mac,
-        api_device.data,
-    )
-
-    return api_device, "debug"
+    return api_device, None
 
 
 async def update_device(api_device: MPowerDevice) -> None:
@@ -131,7 +117,7 @@ async def create_coordinator(
     setup_asyncssh_logger()
 
     # Create and update API device
-    api_device = await create_device(hass, data)
+    api_device = create_device(hass, data)
     try:
         await update_device(api_device)
     except Exception:  # pylint: disable=broad-except
