@@ -331,17 +331,16 @@ class MPowerCoordinatorEntity(CoordinatorEntity, ABC):
         old_entity_base = self.entity_id.split(".", 1)[1]
 
         # Create entity base from host
-        # TODO: Introduce global entity format option
-        # new_entity_base = self.api_device.host
+        new_entity_base = self.api_device.host
 
         # Append entity port name (port id or label) to entity base
         if self.has_api_entity:
             if self.api_entity.label:
+                # TODO: Introduce global entity format option
                 # new_entity_base += f" {self.api_entity.label}"
                 new_entity_base = self.api_entity.label
             else:
-                # new_entity_base += f" port {self.api_entity.port}"
-                new_entity_base = f"{self.api_device.host} port {self.api_entity.port}"
+                new_entity_base += f" port {self.api_entity.port}"
 
         # Append entity name (if any) to entity base
         if self.name is not None:
