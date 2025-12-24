@@ -26,6 +26,7 @@ async def async_get_config_entry_diagnostics(
     }
 
 
+# TODO: Implement device diagnostics
 # async def async_get_device_diagnostics(
 #     hass: HomeAssistant, entry: ConfigEntry, device: DeviceEntry
 # ) -> dict[str, Any]:

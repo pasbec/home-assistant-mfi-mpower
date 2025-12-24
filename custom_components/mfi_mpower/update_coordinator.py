@@ -327,48 +327,43 @@ class MPowerCoordinatorEntity(CoordinatorEntity, ABC):
                 name=new_device_name,
             )
 
-        # Get old entity id
-        old_entity_id = self.entity_id.split(".", 1)[1]
+        # Get old entity base
+        old_entity_base = self.entity_id.split(".", 1)[1]
 
-        # Create entity id base from host
-        new_entity_id = self.api_device.host
+        # Create entity base from host
+        # TODO: Introduce global entity format option
+        # new_entity_base = self.api_device.host
 
-        # Append entity port name (port id or label) to entity id
+        # Append entity port name (port id or label) to entity base
         if self.has_api_entity:
             if self.api_entity.label:
-                new_entity_id += f" {self.api_entity.label}"
+                # new_entity_base += f" {self.api_entity.label}"
+                new_entity_base = self.api_entity.label
             else:
-                new_entity_id += f" port {self.api_entity.port}"
+                # new_entity_base += f" port {self.api_entity.port}"
+                new_entity_base = f"{self.api_device.host} port {self.api_entity.port}"
 
-        # Append entity name (if any) to entity id
+        # Append entity name (if any) to entity base
         if self.name is not None:
-            new_entity_id += f" {self.name}"
-        new_entity_id = slugify(new_entity_id)
+            new_entity_base += f" {self.name}"
 
-        # Adjust entity id
-        if new_entity_id != old_entity_id:
+        # Adjust entity base
+        if new_entity_base != old_entity_base:
             _LOGGER.debug(
-                "Adjusting entity id from %s to %s",
-                old_entity_id,
-                new_entity_id,
+                "Attempt entity ID change from %s to %s",
+                f"{self.domain}.{old_entity_base}",
+                f"{self.domain}.{new_entity_base}",
             )
 
             # Update entity id in entity registry
             entity_registry = er.async_get(self.hass)
-            try:
-                new_entity_id = f"{self.domain}.{new_entity_id}"
-                entity_registry.async_update_entity(
-                    self.entity_id,
-                    new_entity_id=new_entity_id,
-                )
-            except ValueError:
-                new_entity_id = entity_registry.async_generate_entity_id(
-                    self.domain, new_entity_id
-                )
-                entity_registry.async_update_entity(
-                    self.entity_id,
-                    new_entity_id=new_entity_id,
-                )
+            new_entity_id = entity_registry.async_generate_entity_id(
+                self.domain, new_entity_base
+            )
+            entity_registry.async_update_entity(
+                self.entity_id,
+                new_entity_id=new_entity_id,
+            )
 
         # Update attributes
         self._handle_attr_update()
