@@ -338,13 +338,14 @@ class MPowerCoordinatorEntity(CoordinatorEntity, ABC):
             if self.api_entity.label:
                 # TODO: Introduce global entity format option
                 # new_entity_base += f" {self.api_entity.label}"
-                new_entity_base = self.api_entity.label
+                new_entity_base = self.api_entity.label.lower()
             else:
                 new_entity_base += f" port {self.api_entity.port}"
 
         # Append entity name (if any) to entity base
         if self.name is not None:
             new_entity_base += f" {self.name}"
+        new_entity_base = slugify(new_entity_base)
 
         # Adjust entity base
         if new_entity_base != old_entity_base:
@@ -356,13 +357,20 @@ class MPowerCoordinatorEntity(CoordinatorEntity, ABC):
 
             # Update entity id in entity registry
             entity_registry = er.async_get(self.hass)
-            new_entity_id = entity_registry.async_generate_entity_id(
-                self.domain, new_entity_base
-            )
-            entity_registry.async_update_entity(
-                self.entity_id,
-                new_entity_id=new_entity_id,
-            )
+            try:
+                new_entity_id = f"{self.domain}.{new_entity_base}"
+                entity_registry.async_update_entity(
+                    self.entity_id,
+                    new_entity_id=new_entity_id,
+                )
+            except ValueError:
+                new_entity_id = entity_registry.async_generate_entity_id(
+                    self.domain, new_entity_base
+                )
+                entity_registry.async_update_entity(
+                    self.entity_id,
+                    new_entity_id=new_entity_id,
+                )
 
         # Update attributes
         self._handle_attr_update()
