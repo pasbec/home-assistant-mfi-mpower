@@ -101,7 +101,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     options = dict(config_entry.options)
 
     # Log migration info
-    _LOGGER.error(
+    _LOGGER.debug(
         "Migrating config for %s from version %s to %s", title, version, CONFIG_VERSION
     )
 
