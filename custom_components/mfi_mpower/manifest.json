@@ -4,7 +4,7 @@
   "integration_type": "hub",
   "config_flow": true,
   "documentation": "https://github.com/pasbec/home-assistant-mfi-mpower",
-  "requirements": ["mfi-mpower==3.2.0"],
+  "requirements": ["mfi-mpower==3.2.2"],
   "ssdp": [],
   "zeroconf": [],
   "homekit": {},

@@ -1,11 +1,11 @@
-"""Support for Ubiquiti mFi mPower selects."""
+"""Support for Ubiquiti mFi mPower buttons."""
 
 from __future__ import annotations
 
 import logging
 
-from homeassistant.components import select
-from homeassistant.components.select import SelectEntity
+from homeassistant.components import button
+from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
@@ -17,7 +17,7 @@ from .config_flow import create_schema
 from .const import DOMAIN
 from .update_coordinator import MPowerCoordinatorEntity, MPowerDataUpdateCoordinator
 
-PLATFORM_SCHEMA = select.PLATFORM_SCHEMA.extend(create_schema().schema)
+PLATFORM_SCHEMA = button.PLATFORM_SCHEMA.extend(create_schema().schema)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ async def async_setup_platform(
     async_add_entities: AddEntitiesCallback,
     discovery_info: DiscoveryInfoType | None = None,
 ) -> None:
-    """Set up Ubiquiti mFi mPower selects based on config."""
+    """Set up Ubiquiti mFi mPower buttons based on config."""
     coordinator = await api.create_coordinator(hass, config[DOMAIN])
     entities = await async_create_entities(coordinator)
     async_add_entities(entities, False)
@@ -39,7 +39,7 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up Ubiquiti mFi mPower selects based on config entry."""
+    """Set up Ubiquiti mFi mPower buttons based on config entry."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
     entities = await async_create_entities(coordinator)
     async_add_entities(entities, False)
@@ -47,34 +47,29 @@ async def async_setup_entry(
 
 async def async_create_entities(
     coordinator: MPowerDataUpdateCoordinator,
-) -> list[MPowerSelectEntity]:
-    """Create Ubiquiti mFi mPower select entities."""
+) -> list[MPowerButtonEntity]:
+    """Create Ubiquiti mFi mPower button entities."""
 
-    entities = [MPowerLEDSelectEntity(coordinator)]
+    entities = [MPowerRestartButtonEntity(coordinator)]
 
     await coordinator.async_migrate_old_entity_unique_ids(entities)
 
     return entities
 
 
-class MPowerSelectEntity(MPowerCoordinatorEntity, SelectEntity):
-    """Coordinated select entity for Ubiquiti mFi mPower."""
+class MPowerButtonEntity(MPowerCoordinatorEntity, ButtonEntity):
+    """Coordinated button entity for Ubiquiti mFi mPower."""
 
-    _domain: str = select.DOMAIN
+    _domain: str = button.DOMAIN
 
 
-class MPowerLEDSelectEntity(MPowerSelectEntity):
-    """Coordinated select entity for Ubiquiti mFi mPower LED status."""
+class MPowerRestartButtonEntity(MPowerButtonEntity):
+    """Coordinated button entity for Ubiquiti mFi mPower restarts."""
 
-    _attr_entity_category = EntityCategory.CONFIG
-    _attr_options = [e.name for e in api.MPowerLED]
-    _attr_translation_key = "led"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:restart"
+    _attr_translation_key = "restart"
 
-    def _handle_attr_update(self) -> None:
-        """Handle attribute updates from API data."""
-        self._attr_current_option = self.api_device.led.name
-
-    async def async_select_option(self, option: str) -> None:
-        """Change the select option."""
-        await self.api_device.set_led(api.MPowerLED[option], refresh=False)
-        await self.coordinator.async_request_refresh()
+    async def async_press(self) -> None:
+        """Press the button."""
+        await self.api_device.reboot()

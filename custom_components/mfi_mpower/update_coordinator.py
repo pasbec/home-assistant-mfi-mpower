@@ -244,7 +244,6 @@ class MPowerCoordinatorEntity(CoordinatorEntity, ABC):
     def device_model(self) -> str:
         """Return the device model of the entity."""
         if self.has_api_entity:
-            # return self.coordinator.name
             return f"{self.coordinator.name} {self.port_name}"
         return self.api_device.model
 
@@ -275,8 +274,8 @@ class MPowerCoordinatorEntity(CoordinatorEntity, ABC):
         # Skip update without Home Assistant instance
         if self.hass is None:
             _LOGGER.error(
-                "Home Assistant instance not set for entity %s, skipping update",
-                self.unique_id,
+                "Home Assistant not set for entity %s, skipping update",
+                self.entity_id,
             )
             return
 
@@ -288,9 +287,9 @@ class MPowerCoordinatorEntity(CoordinatorEntity, ABC):
 
         # Skip update without data
         if data is None:
-            _LOGGER.error(
-                "Device data for %s is invalid, skipping update",
-                self.api_device.hostname,
+            _LOGGER.debug(
+                "Device data for entity %s is empty, skipping update",
+                self.entity_id,
             )
             return
 
@@ -301,8 +300,8 @@ class MPowerCoordinatorEntity(CoordinatorEntity, ABC):
                 self.api_entity.update(data)
             except api.MPowerDataError:
                 _LOGGER.error(
-                    "Port data for %s is invalid, skipping update",
-                    self.api_device.host,
+                    "Port data for entity %s is invalid, skipping update",
+                    self.entity_id,
                 )
                 return
         else:
@@ -316,8 +315,8 @@ class MPowerCoordinatorEntity(CoordinatorEntity, ABC):
         # Adjust device name
         if new_device_name != old_device_name:
             _LOGGER.debug(
-                "Adjusting device name fro %s from %s to %s",
-                self.api_device.host,
+                "Adjusting device name for entity %s from %s to %s",
+                self.entity_id,
                 old_device_name,
                 new_device_name,
             )
@@ -352,9 +351,8 @@ class MPowerCoordinatorEntity(CoordinatorEntity, ABC):
         # Adjust entity base
         if new_entity_base != old_entity_base:
             _LOGGER.debug(
-                "Attempt entity ID change for %s from %s to %s",
-                self.api_device.host,
-                f"{self.domain}.{old_entity_base}",
+                "Attempt entity ID change for entity %s to %s",
+                self.entity_id,
                 f"{self.domain}.{new_entity_base}",
             )
 
@@ -384,7 +382,7 @@ class MPowerCoordinatorEntity(CoordinatorEntity, ABC):
         except RuntimeError:
             _LOGGER.error(
                 "Update attempt failed for entity %s, skipping update",
-                self.unique_id,
+                self.entity_id,
             )
             return
 

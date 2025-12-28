@@ -47,7 +47,7 @@ async def async_setup_entry(
 async def async_create_entities(
     coordinator: MPowerDataUpdateCoordinator,
 ) -> list[MPowerSwitchEntity]:
-    """Create switch entities from Ubiquiti mFi mPower switches."""
+    """Create Ubiquiti mFi mPower switch entities."""
     api_device = coordinator.api_device
 
     try:

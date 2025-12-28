@@ -14,7 +14,12 @@ from . import api
 from .const import DOMAIN
 from .version import Version
 
-PLATFORMS: list[Platform] = [Platform.SWITCH, Platform.SENSOR, Platform.SELECT]
+PLATFORMS: list[Platform] = [
+    Platform.BUTTON,
+    Platform.SWITCH,
+    Platform.SENSOR,
+    Platform.SELECT,
+]
 
 CONFIG_VERSION = Version(1, 2)
 

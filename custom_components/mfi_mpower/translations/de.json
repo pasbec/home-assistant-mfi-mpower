@@ -33,6 +33,16 @@
     }
   },
   "entity": {
+    "button": {
+      "restart": {
+        "name": "Neu starten"
+      }
+    },
+    "select": {
+      "led": {
+        "name": "Status-LED"
+      }
+    },
     "sensor": {
       "host": {
         "name": "Host"
@@ -68,11 +78,6 @@
     "switch": {
       "lock": {
         "name": "Sperre"
-      }
-    },
-    "select": {
-      "led": {
-        "name": "Status-LED"
       }
     }
   }
