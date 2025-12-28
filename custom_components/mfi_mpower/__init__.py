@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import logging
+from typing import Awaitable, Callable
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform, CONF_HOST, CONF_SSL, CONF_VERIFY_SSL
-from homeassistant.core import HomeAssistant
+from homeassistant.core import Event, HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.device_registry import DeviceEntry
 
@@ -30,21 +31,31 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     """Set up integration from a config entry."""
     data = {**config_entry.data, **config_entry.options}
 
-    title = api.create_title(config_entry.data[CONF_HOST])
-    if config_entry.title != title:
-        hass.config_entries.async_update_entry(config_entry, title=title)
+    # Create domain data dict if it does not exist
     hass.data.setdefault(DOMAIN, {})
 
+    # Update config entry title
+    hass.config_entries.async_update_entry(
+        config_entry, title=api.create_title(config_entry.data[CONF_HOST])
+    )
+
+    # Create data update coordinator
     coordinator = await api.create_coordinator(
         hass=hass, data=data, config_entry=config_entry
     )
-    api_device = coordinator.api_device
 
+    # Register coordinator with entry ID in hass data
     hass.data[DOMAIN][config_entry.entry_id] = coordinator
 
     # Add update listener to reload integration after options changes
-    config_entry.async_on_unload(config_entry.add_update_listener(async_update_reload))
+    config_entry.async_on_unload(
+        config_entry.add_update_listener(async_config_entry_update_listener)
+    )
 
+    # Get API device from coordinator
+    api_device = coordinator.api_device
+
+    # Register device in device registry
     device_registry = dr.async_get(hass)
     device_registry.async_get_or_create(
         config_entry_id=config_entry.entry_id,
@@ -61,14 +72,65 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         sw_version=api_device.firmware,
     )
 
+    # Add listeners ...
+    if not hass.data[DOMAIN].get("listeners_registered"):
+        # ... for device registry updates
+        hass.bus.async_listen(
+            dr.EVENT_DEVICE_REGISTRY_UPDATED,
+            create_device_registry_update_listener(hass),
+        )
+
+        # ... for entity registry updates
+        hass.bus.async_listen(
+            er.EVENT_ENTITY_REGISTRY_UPDATED,
+            create_entity_registry_update_listener(hass),
+        )
+
+        hass.data[DOMAIN]["listeners_registered"] = True
+
+    # Set up platforms
     await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
 
     return True
 
 
-async def async_update_reload(hass: HomeAssistant, config_entry: ConfigEntry):
+async def async_config_entry_update_listener(
+    hass: HomeAssistant, config_entry: ConfigEntry
+) -> None:
     """Listener to trigger a reload of the config entry."""
     await hass.config_entries.async_reload(config_entry.entry_id)
+
+
+def create_device_registry_update_listener(
+    hass: HomeAssistant,
+) -> Callable[[Event], Awaitable[None]]:
+    async def listener(event: Event) -> None:
+        _LOGGER.debug("Device registry updated: %s", event.data)
+        if device_id := event.data.get("device_id"):
+            device_registry = dr.async_get(hass)
+            if device := device_registry.async_get(device_id):
+                changes = event.data.get("changes", {}).copy()
+                for key in changes:
+                    changes[key] = getattr(device, key, None)
+                _LOGGER.debug("Device registry changes: %s", changes)
+
+    return listener
+
+
+def create_entity_registry_update_listener(
+    hass: HomeAssistant,
+) -> Callable[[Event], Awaitable[None]]:
+    async def listener(event: Event) -> None:
+        _LOGGER.debug("Entity registry updated: %s", event.data)
+        if entity_id := event.data.get("entity_id"):
+            entity_registry = er.async_get(hass)
+            if entry := entity_registry.async_get(entity_id):
+                changes = event.data.get("changes", {}).copy()
+                for key in changes:
+                    changes[key] = getattr(entry, key, None)
+                _LOGGER.debug("Entity registry changes: %s", changes)
+
+    return listener
 
 
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
