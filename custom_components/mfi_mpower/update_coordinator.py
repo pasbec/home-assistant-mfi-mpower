@@ -66,7 +66,7 @@ class MPowerDataUpdateCoordinator(DataUpdateCoordinator):
             async with async_timeout.timeout(timeout):
                 await api.update_device(self.api_device)
         except asyncio.TimeoutError as exc:
-            raise asyncio.TimeoutError(exc) from exc
+            raise exc
         except api.MPowerAuthenticationError as exc:
             raise ConfigEntryAuthFailed(exc) from exc
         except Exception as exc:
@@ -289,7 +289,8 @@ class MPowerCoordinatorEntity(CoordinatorEntity, ABC):
         # Skip update without data
         if data is None:
             _LOGGER.error(
-                "Data for entity %s is invalid, skipping update", self.unique_id
+                "Device data for %s is invalid, skipping update",
+                self.api_device.hostname,
             )
             return
 
@@ -300,8 +301,8 @@ class MPowerCoordinatorEntity(CoordinatorEntity, ABC):
                 self.api_entity.update(data)
             except api.MPowerDataError:
                 _LOGGER.error(
-                    "Port data for entity %s is invalid, skipping update",
-                    self.unique_id,
+                    "Port data for %s is invalid, skipping update",
+                    self.api_device.host,
                 )
                 return
         else:
@@ -315,7 +316,8 @@ class MPowerCoordinatorEntity(CoordinatorEntity, ABC):
         # Adjust device name
         if new_device_name != old_device_name:
             _LOGGER.debug(
-                "Adjusting device name from %s to %s",
+                "Adjusting device name fro %s from %s to %s",
+                self.api_device.host,
                 old_device_name,
                 new_device_name,
             )
@@ -331,7 +333,7 @@ class MPowerCoordinatorEntity(CoordinatorEntity, ABC):
         old_entity_base = self.entity_id.split(".", 1)[1]
 
         # Create entity base from host
-        new_entity_base = self.api_device.host
+        new_entity_base = self.api_device.hostname
 
         # Append entity port name (port id or label) to entity base
         if self.has_api_entity:
@@ -350,7 +352,8 @@ class MPowerCoordinatorEntity(CoordinatorEntity, ABC):
         # Adjust entity base
         if new_entity_base != old_entity_base:
             _LOGGER.debug(
-                "Attempt entity ID change from %s to %s",
+                "Attempt entity ID change for %s from %s to %s",
+                self.api_device.host,
                 f"{self.domain}.{old_entity_base}",
                 f"{self.domain}.{new_entity_base}",
             )
