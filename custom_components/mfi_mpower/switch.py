@@ -143,10 +143,12 @@ class MPowerOutletSwitchEntity(MPowerSwitchEntity):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the outlet switch on."""
-        await self.api_entity.turn_on(refresh=False)
-        await self.coordinator.async_request_refresh()
+        if not self.api_entity.locked:
+            await self.api_entity.turn_on(refresh=False)
+            await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the outlet switch off."""
-        await self.api_entity.turn_off(refresh=False)
-        await self.coordinator.async_request_refresh()
+        if not self.api_entity.locked:
+            await self.api_entity.turn_off(refresh=False)
+            await self.coordinator.async_request_refresh()
